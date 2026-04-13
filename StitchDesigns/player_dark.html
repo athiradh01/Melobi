@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#555a75",
+                        "secondary": "#c0c5e4",
+                        "primary-fixed-dim": "#b3b8ef",
+                        "on-surface-variant": "#a8abb0",
+                        "surface": "#0c0e10",
+                        "on-surface": "#e2e6eb",
+                        "surface-dim": "#0c0e10",
+                        "on-primary-container": "#e0e1ff",
+                        "tertiary-fixed-dim": "#cdd3f1",
+                        "secondary-container": "#353a54",
+                        "surface-container": "#171a1d",
+                        "secondary-dim": "#b3b7d6",
+                        "on-background": "#e2e6eb",
+                        "error": "#f97386",
+                        "inverse-primary": "#565b8c",
+                        "tertiary-fixed": "#dbe1ff",
+                        "primary": "#bec3fa",
+                        "on-primary": "#373c6b",
+                        "primary-fixed": "#c0c5fd",
+                        "primary-container": "#494f7f",
+                        "on-secondary-fixed": "#393e58",
+                        "tertiary-container": "#dbe1ff",
+                        "secondary-fixed": "#dde1ff",
+                        "surface-container-lowest": "#000000",
+                        "secondary-fixed-dim": "#ced3f3",
+                        "tertiary-dim": "#cdd3f1",
+                        "on-primary-fixed": "#252a58",
+                        "surface-container-low": "#111416",
+                        "on-secondary": "#3a3f59",
+                        "on-error-container": "#ff97a3",
+                        "on-tertiary": "#535972",
+                        "inverse-surface": "#f9f9fc",
+                        "on-tertiary-container": "#4a5169",
+                        "outline-variant": "#44484d",
+                        "background": "#0c0e10",
+                        "surface-tint": "#bec3fa",
+                        "outline": "#72767a",
+                        "surface-container-highest": "#22262a",
+                        "error-dim": "#c44b5f",
+                        "surface-container-high": "#1c2023",
+                        "on-primary-fixed-variant": "#424777",
+                        "on-tertiary-fixed-variant": "#545b74",
+                        "primary-dim": "#b0b5ec",
+                        "on-tertiary-fixed": "#383e56",
+                        "inverse-on-surface": "#535557",
+                        "surface-variant": "#22262a",
+                        "tertiary": "#eff0ff",
+                        "error-container": "#871c34",
+                        "on-error": "#490013",
+                        "on-secondary-container": "#b9bddd",
+                        "surface-bright": "#282d31"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0c0e10;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        .ethereal-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(190, 195, 250, 0.1) 0%, rgba(12, 14, 16, 0) 70%);
+        }
+        .record-spin {
+            animation: spin 20s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col selection:bg-primary/30">
+<!-- TopAppBar -->
+<header class="bg-[#0c0e10] dark:bg-[#0c0e10] flex justify-between items-center w-full px-6 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<button class="hover:bg-[#1c2023]/50 dark:hover:bg-[#1c2023]/50 transition-colors p-2 rounded-full scale-95 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined text-[#bec3fa] dark:text-[#bec3fa]">cloud_off</span>
+</button>
+<h1 class="font-['Plus_Jakarta_Sans'] tracking-tight headline-md text-xl font-bold text-[#e2e6eb] dark:text-[#e2e6eb]">Soundscape</h1>
+</div>
+<button class="hover:bg-[#1c2023]/50 dark:hover:bg-[#1c2023]/50 transition-colors p-2 rounded-full scale-95 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined text-[#bec3fa] dark:text-[#bec3fa]">light_mode</span>
+</button>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center px-8 pb-32 pt-4 relative overflow-hidden">
+<!-- Ethereal Background Element -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] ethereal-glow pointer-events-none"></div>
+<!-- Player Canvas -->
+<div class="w-full max-w-lg flex flex-col items-center gap-12 relative z-10">
+<!-- Spinning Record Visual -->
+<div class="relative group">
+<!-- Outer Ring Glow -->
+<div class="absolute inset-0 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-all duration-700"></div>
+<!-- The Record -->
+<div class="relative w-72 h-72 md:w-80 md:h-80 rounded-full bg-surface-container-highest p-1 shadow-2xl border border-outline-variant/10 overflow-hidden record-spin">
+<div class="w-full h-full rounded-full bg-[#050505] relative flex items-center justify-center overflow-hidden">
+<!-- Grooves effect -->
+<div class="absolute inset-0 rounded-full" style="background: repeating-radial-gradient(circle, transparent 0, transparent 2px, rgba(255,255,255,0.03) 3px, transparent 4px);"></div>
+<!-- Album Art Center -->
+<div class="w-32 h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-surface z-10">
+<img alt="Album Art" class="w-full h-full object-cover" data-alt="Abstract vibrant digital art with swirling purple and blue nebula textures and soft glowing particles" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnEkunb_SJgq35OEpEdHnwSnqtVpoWqZry8HcmNiciahWL1-OOIafVFhJBLx_Nt0ThzsUsrgWew61QwShywc32j-ih2UpN2k5RmtaVstKEe28RjagFrgK7CK2BA3BfZcw_kzvVbYtI2CHLNHfwfCYfG3-uz6w3-XZrgm2OAMF0T7iAHfY-YBSRPvkZcP8sl_NNKiXteNESycxgPsYw7cnrYJaKSo6eP4UcWI1Dn0SI6xUk0GimMw8VMgDi_VGhzJfpq3MN1ZQhjKA"/>
+</div>
+<!-- Center Hole -->
+<div class="absolute w-4 h-4 bg-surface rounded-full z-20 shadow-inner"></div>
+</div>
+</div>
+<!-- Playback Needle (Static for design) -->
+<div class="absolute -top-4 -right-8 w-32 h-32 origin-top-right transition-transform rotate-12 pointer-events-none">
+<div class="w-1.5 h-24 bg-gradient-to-b from-outline to-outline-variant rounded-full relative ml-auto mr-4">
+<div class="absolute bottom-0 -left-1 w-3.5 h-6 bg-outline-variant rounded-sm"></div>
+</div>
+</div>
+</div>
+<!-- Song Info -->
+<div class="text-center w-full space-y-2">
+<h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface">Midnight Nebula</h2>
+<p class="text-lg text-on-surface-variant font-medium">Lumina &amp; The Echoes</p>
+</div>
+<!-- Playback Slider -->
+<div class="w-full space-y-4">
+<div class="relative h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="absolute top-0 left-0 h-full w-[42%] bg-gradient-to-r from-primary to-primary-container rounded-full"></div>
+</div>
+<div class="flex justify-between text-xs font-bold tracking-widest text-on-surface-variant uppercase">
+<span>1:45</span>
+<span>4:20</span>
+</div>
+</div>
+<!-- Main Controls -->
+<div class="flex items-center justify-between w-full max-w-sm">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-3xl">shuffle</span>
+</button>
+<div class="flex items-center gap-8">
+<button class="text-on-surface hover:text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined text-4xl filled-icon" style="font-variation-settings: 'FILL' 1;">skip_previous</span>
+</button>
+<button class="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary shadow-xl shadow-primary/10 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-5xl filled-icon" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<button class="text-on-surface hover:text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined text-4xl filled-icon" style="font-variation-settings: 'FILL' 1;">skip_next</span>
+</button>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-3xl">repeat</span>
+</button>
+</div>
+<!-- Secondary Actions: Lyrics & Volume -->
+<div class="flex items-center justify-center gap-12 w-full">
+<button class="flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest px-6 py-2.5 rounded-full transition-all border border-outline-variant/15">
+<span class="material-symbols-outlined text-xl">lyrics</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold text-on-surface">Lyrics</span>
+</button>
+<div class="flex items-center gap-3 flex-1 max-w-[140px]">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">volume_down</span>
+<div class="flex-1 h-1 bg-surface-container-highest rounded-full">
+<div class="w-2/3 h-full bg-on-surface-variant rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-4 bg-[#0c0e10]/80 dark:bg-[#0c0e10]/80 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-4px_24px_rgba(190,195,250,0.06)]">
+<a class="flex flex-col items-center justify-center text-[#a8abb0] dark:text-[#a8abb0] px-5 py-2 hover:text-[#e2e6eb] dark:hover:text-[#e2e6eb] transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#494f7f]/30 dark:bg-[#494f7f]/30 text-[#bec3fa] dark:text-[#bec3fa] rounded-full px-5 py-2 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">library_music</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#a8abb0] dark:text-[#a8abb0] px-5 py-2 hover:text-[#e2e6eb] dark:hover:text-[#e2e6eb] transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">search</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#a8abb0] dark:text-[#a8abb0] px-5 py-2 hover:text-[#e2e6eb] dark:hover:text-[#e2e6eb] transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold">Profile</span>
+</a>
+</nav>
+</body></html>

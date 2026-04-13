@@ -1,0 +1,34 @@
+# Xcode
+#
+# gitignore contributors: writers on GitHub
+
+## Build results
+build/
+DerivedData/
+
+## Dependency manager
+/.build/
+Packages/
+Package.resolved
+
+## User specific
+*.xcuserdata
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+## OS X
+.DS_Store
+
+## Localization
+*.lproj
+*.strings
+
+## Xcode
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Soundscape - Lyrics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#444653",
+                        "secondary": "#5b5d72",
+                        "primary-fixed-dim": "#b3b8ef",
+                        "on-surface-variant": "#44474e",
+                        "surface": "#f9f9ff",
+                        "on-surface": "#191c20",
+                        "surface-dim": "#d9d9e0",
+                        "on-primary-container": "#00105c",
+                        "tertiary-fixed-dim": "#cdd3f1",
+                        "secondary-container": "#e0e1f9",
+                        "surface-container": "#eeeef7",
+                        "secondary-dim": "#c4c5dd",
+                        "on-background": "#191c20",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#bec3fa",
+                        "tertiary-fixed": "#dbe1ff",
+                        "primary": "#494f7f",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#e0e1ff",
+                        "primary-container": "#dbe1ff",
+                        "on-secondary-fixed": "#181a2c",
+                        "tertiary-container": "#dbe1ff",
+                        "secondary-fixed": "#e0e1f9",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#c4c5dd",
+                        "tertiary-dim": "#cdd3f1",
+                        "on-primary-fixed": "#000d5e",
+                        "surface-container-low": "#f3f3fb",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#410002",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2e3036",
+                        "on-tertiary-container": "#00105c",
+                        "outline-variant": "#c4c6d0",
+                        "background": "#f9f9ff",
+                        "surface-tint": "#494f7f",
+                        "outline": "#74777f",
+                        "surface-container-highest": "#e2e2ea",
+                        "error-dim": "#ffb4ab",
+                        "surface-container-high": "#e8e8f0",
+                        "on-primary-fixed-variant": "#323766",
+                        "on-tertiary-fixed-variant": "#444653",
+                        "primary-dim": "#b0b5ec",
+                        "on-tertiary-fixed": "#181a2c",
+                        "inverse-on-surface": "#f0f0f7",
+                        "surface-variant": "#e1e2ec",
+                        "tertiary": "#5b5d72",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "on-secondary-container": "#181a2c",
+                        "surface-bright": "#f9f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "9999px",
+                        "lg": "9999px",
+                        "xl": "9999px",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f9f9ff; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .lyrics-gradient {
+            background: linear-gradient(180deg, rgba(249,249,255,0) 0%, rgba(249,249,255,0.8) 50%, rgba(249,249,255,1) 100%);
+        }
+        .active-lyric {
+            text-shadow: 0 0 20px rgba(73, 79, 127, 0.1);
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="text-on-surface select-none">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#f9f9ff]/80 backdrop-blur-md">
+<div class="flex justify-between items-center w-full px-6 py-4">
+<div class="flex items-center gap-3 transition-transform scale-95 active:opacity-80">
+<span class="material-symbols-outlined text-primary">cloud_off</span>
+<span class="text-xl font-bold text-on-surface font-['Plus_Jakarta_Sans'] tracking-tight">Soundscape</span>
+</div>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors transition-transform scale-95 active:opacity-80">
+<span class="material-symbols-outlined text-primary">dark_mode</span>
+</button>
+</div>
+</header>
+<main class="min-h-screen pt-24 pb-48 px-6 overflow-x-hidden relative">
+<!-- Ambient Background Depth - Light & Airy -->
+<div class="fixed inset-0 pointer-events-none overflow-hidden">
+<div class="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-primary-container/30 blur-[120px]"></div>
+<div class="absolute top-[40%] -right-[10%] w-[50%] h-[50%] rounded-full bg-secondary-container/30 blur-[100px]"></div>
+</div>
+<div class="max-w-4xl mx-auto relative z-10">
+<!-- Asymmetric Hero Section -->
+<div class="flex flex-col md:flex-row gap-8 items-end mb-16">
+<div class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 relative group">
+<img class="w-full h-full object-cover rounded-3xl shadow-xl transition-transform duration-500 group-hover:scale-105" data-alt="Abstract cinematic 3D render of vibrant purple and blue glass shards floating in a dark atmospheric space with sharp lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEX1lkUkj5onNL6lzoY8nQZ454KH9M2o8kebemIc_jEzgjbHZvY7OmGdtnL2rnYt7VqYm3gLTPa1UdTd0Im6HzwiUPUJZD3nJCQe3x4Ln9vUBC9XZ_kFcjih-JGK8IpGdc__mitlaYMOuMPnuhbLeny0qcISYBz7iu8qw7OHrsbHUw5C_AgrOfKKInhyIk9IyWmgYad4Sr1zekwVgqraTaMf1Jms_WIT020k2qqbYS94h6SMkPfbNb575B4ypbPbQj24LQmY8j4eM"/>
+<div class="absolute inset-0 rounded-3xl shadow-[inset_0_0_20px_rgba(0,0,0,0.05)]"></div>
+</div>
+<div class="flex-grow">
+<span class="text-label-md uppercase tracking-[0.2em] text-primary font-bold mb-2 block">Now Playing</span>
+<h1 class="text-5xl md:text-7xl font-extrabold text-on-surface tracking-tighter leading-none mb-4">Midnight City</h1>
+<p class="text-xl text-on-surface-variant font-medium">M83 • Hurry Up, We're Dreaming</p>
+</div>
+</div>
+<!-- Lyrics Canvas (Focused Journey) -->
+<div class="space-y-12 mb-20">
+<!-- Past Lyrics -->
+<div class="opacity-20 text-3xl md:text-5xl font-bold tracking-tight transition-opacity hover:opacity-40 cursor-pointer">
+                Waiting in a car
+            </div>
+<div class="opacity-20 text-3xl md:text-5xl font-bold tracking-tight transition-opacity hover:opacity-40 cursor-pointer">
+                Waiting for a ride in the dark
+            </div>
+<!-- Active Lyric (High Contrast Moment) -->
+<div class="active-lyric text-4xl md:text-7xl font-extrabold tracking-tighter text-on-surface leading-tight transition-all">
+                The night city grows
+                <br/>
+<span class="bg-gradient-to-r from-primary to-primary-container bg-clip-text text-transparent">Look at the horizon line</span>
+</div>
+<!-- Future Lyrics -->
+<div class="opacity-20 text-3xl md:text-5xl font-bold tracking-tight hover:opacity-40 cursor-pointer transition-opacity">
+                The wind blows wild
+            </div>
+<div class="opacity-20 text-3xl md:text-5xl font-bold tracking-tight hover:opacity-40 cursor-pointer transition-opacity">
+                Of a billion stars
+            </div>
+<div class="opacity-20 text-3xl md:text-5xl font-bold tracking-tight hover:opacity-40 cursor-pointer transition-opacity">
+                Waiting for a ride in the dark
+            </div>
+</div>
+<!-- Bento Metadata Section -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+<div class="md:col-span-2 bg-surface-container-low rounded-3xl p-8 relative overflow-hidden group border border-outline-variant/10">
+<div class="relative z-10">
+<h3 class="text-label-md uppercase tracking-widest text-on-surface-variant mb-4 font-bold">About the Artist</h3>
+<p class="text-on-surface leading-relaxed max-w-md">M83 is the musical project of French musician Anthony Gonzalez. The name is inspired by the spiral galaxy Messier 83.</p>
+<div class="mt-6 flex gap-4">
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface font-bold text-sm border border-outline-variant/15 hover:bg-surface-container-highest transition-colors">
+                            View Profile
+                        </button>
+</div>
+</div>
+<div class="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[120px]">music_note</span>
+</div>
+</div>
+<div class="bg-primary-container rounded-3xl p-8 border border-primary/10 flex flex-col justify-between">
+<h3 class="text-label-md uppercase tracking-widest text-primary font-bold">Upcoming Tour</h3>
+<div>
+<p class="text-2xl font-bold text-on-primary-container">Paris, FR</p>
+<p class="text-sm text-on-primary-container/70">Le Zenith • Oct 14</p>
+</div>
+<button class="w-full mt-4 bg-primary text-on-primary py-3 rounded-full font-bold transition-all active:scale-95 shadow-lg shadow-primary/20">
+                    Get Tickets
+                </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Audio Control Bar -->
+<div class="fixed bottom-32 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-surface-container-highest/80 backdrop-blur-2xl rounded-full px-8 py-4 z-40 border border-outline-variant/20 shadow-2xl flex items-center gap-6">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">shuffle</span>
+<span class="material-symbols-outlined text-on-surface cursor-pointer text-3xl">skip_previous</span>
+</div>
+<button class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface cursor-pointer text-3xl">skip_next</span>
+<span class="material-symbols-outlined text-primary cursor-pointer" style="font-variation-settings: 'FILL' 1;">repeat</span>
+</div>
+<div class="flex-grow h-1.5 bg-surface-container-low rounded-full overflow-hidden relative">
+<div class="absolute left-0 top-0 h-full w-1/3 bg-primary rounded-full"></div>
+</div>
+<div class="text-xs font-bold text-on-surface-variant tabular-nums">1:42 / 4:03</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-4 bg-[#f9f9ff]/90 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-4px_24px_rgba(0,0,0,0.04)] border-t border-outline-variant/10">
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-primary transition-all duration-300 ease-in-out cursor-pointer group">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold mt-1">Audiobooks</span>
+</div>
+<!-- Active Tab: Library -->
+<div class="flex flex-col items-center justify-center bg-primary-container/50 text-primary rounded-full px-5 py-2 transition-all duration-300 ease-in-out cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">library_music</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold mt-1">Library</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-primary transition-all duration-300 ease-in-out cursor-pointer group">
+<span class="material-symbols-outlined">search</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold mt-1">Search</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-primary transition-all duration-300 ease-in-out cursor-pointer group">
+<span class="material-symbols-outlined">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] uppercase tracking-[0.05em] font-bold mt-1">Profile</span>
+</div>
+</nav>
+</body></html>

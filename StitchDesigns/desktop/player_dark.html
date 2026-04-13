@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Velvet Echo - Desktop Player</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#dbe1ff",
+                    "on-tertiary": "#535972",
+                    "on-error-container": "#ff97a3",
+                    "secondary-container": "#353a54",
+                    "on-primary-fixed": "#252a58",
+                    "surface-variant": "#22262a",
+                    "primary-fixed": "#c0c5fd",
+                    "inverse-on-surface": "#535557",
+                    "outline-variant": "#44484d",
+                    "primary-fixed-dim": "#b3b8ef",
+                    "error": "#f97386",
+                    "inverse-surface": "#f9f9fc",
+                    "error-container": "#871c34",
+                    "on-secondary-fixed": "#393e58",
+                    "primary-dim": "#b0b5ec",
+                    "tertiary-container": "#dbe1ff",
+                    "primary-container": "#494f7f",
+                    "on-secondary-container": "#b9bddd",
+                    "tertiary-dim": "#cdd3f1",
+                    "on-tertiary-fixed": "#383e56",
+                    "inverse-primary": "#565b8c",
+                    "background": "#0c0e10",
+                    "on-surface": "#e2e6eb",
+                    "on-primary-fixed-variant": "#424777",
+                    "surface-container-low": "#111416",
+                    "surface-bright": "#282d31",
+                    "tertiary": "#eff0ff",
+                    "on-tertiary-container": "#4a5169",
+                    "surface-tint": "#bec3fa",
+                    "outline": "#72767a",
+                    "primary": "#bec3fa",
+                    "surface-container-high": "#1c2023",
+                    "on-error": "#490013",
+                    "secondary-fixed": "#dde1ff",
+                    "surface-container-lowest": "#000000",
+                    "surface-container-highest": "#22262a",
+                    "on-background": "#e2e6eb",
+                    "on-primary-container": "#e0e1ff",
+                    "on-primary": "#373c6b",
+                    "surface-dim": "#0c0e10",
+                    "surface-container": "#171a1d",
+                    "secondary-dim": "#b3b7d6",
+                    "error-dim": "#c44b5f",
+                    "on-tertiary-fixed-variant": "#545b74",
+                    "secondary-fixed-dim": "#ced3f3",
+                    "tertiary-fixed-dim": "#cdd3f1",
+                    "surface": "#0c0e10",
+                    "on-surface-variant": "#a8abb0",
+                    "on-secondary": "#3a3f59",
+                    "on-secondary-fixed-variant": "#555a75",
+                    "secondary": "#c0c5e4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .vinyl-shadow {
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(190, 195, 250, 0.1);
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: rotate 20s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30 overflow-hidden h-screen flex">
+<!-- Mac Window Sidebar Shell -->
+<aside class="flex flex-col h-full py-8 px-6 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-xl h-screen w-64 border-none font-['Plus_Jakarta_Sans'] tracking-wide text-sm font-medium">
+<!-- Mac Window Controls -->
+<div class="flex gap-2 mb-10 px-2">
+<div class="w-3.5 h-3.5 rounded-full bg-[#ff5f57]"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#febc2e]"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#28c840]"></div>
+</div>
+<div class="mb-8 px-2">
+<h1 class="text-xl font-bold tracking-tighter text-slate-800 dark:text-slate-100">Velvet Echo</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 font-bold mt-1">The Ethereal Gallery</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-300 group" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span>Search</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-indigo-700 dark:text-indigo-300 font-bold scale-105 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="book_5">book_5</span>
+<span>Audiobooks</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="library_music">library_music</span>
+<span>Library</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto">
+<div class="bg-indigo-600/10 rounded-2xl p-4 border border-indigo-400/10">
+<p class="text-xs text-indigo-300/70 mb-2">NOW PLAYING ON</p>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-indigo-400 text-lg" data-icon="speaker_group">speaker_group</span>
+<span class="text-xs font-semibold">Studio Monitors</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Player Canvas -->
+<main class="flex-1 flex flex-col relative bg-surface overflow-hidden">
+<!-- Top App Bar Cluster -->
+<header class="flex items-center justify-between px-12 w-full h-16 font-['Plus_Jakarta_Sans'] font-semibold opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-center bg-surface-container-low rounded-full px-4 py-1.5 min-w-[300px]">
+<span class="material-symbols-outlined text-on-surface-variant text-sm mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full text-on-surface" placeholder="Search track, artist, album..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<button class="hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all">
+<span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-slate-100/50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-all">
+<span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Immersive Split View -->
+<section class="flex-1 flex items-center justify-center gap-16 px-16 py-8">
+<!-- Left Side: Spinning Vinyl -->
+<div class="w-1/2 flex flex-col items-center justify-center">
+<div class="relative group cursor-pointer animate-spin-slow">
+<!-- Vinyl Outer -->
+<div class="w-[450px] h-[450px] rounded-full bg-[#050505] flex items-center justify-center relative vinyl-shadow overflow-hidden">
+<!-- Precise Grooves effect -->
+<div class="absolute inset-0 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-2 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-4 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-6 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-8 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-10 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-12 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-14 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-16 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-20 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-24 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-28 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-32 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-36 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-40 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-44 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-48 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-52 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-56 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-60 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-64 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-68 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-72 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-76 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-80 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-84 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-88 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-92 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-96 rounded-full border border-white/[0.03]"></div>
+<div class="absolute inset-100 rounded-full border border-white/[0.03]"></div>
+<!-- Subtle Radial Shine -->
+<div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-transparent rotate-45"></div>
+<div class="absolute inset-0 bg-gradient-to-bl from-transparent via-white/[0.02] to-transparent -rotate-45"></div>
+<!-- Album Art Center -->
+<div class="w-48 h-48 rounded-full overflow-hidden border-4 border-[#121212] z-10">
+<img class="w-full h-full object-cover" data-alt="abstract album cover art with neon indigo and deep violet fluid shapes and ethereal glowing textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTqWrR8n1z5ComUubDV_AydTlB4RgoQaxWqHCCQccpzYGu5GfWTwCp869yQf72pamowr4-QvKf-RkmppXCAXss4d-BVLgXgJoCs89AQCgWfpup0lh4mqHD155ar1Xdka1uV-wKLWokUy5Guck6xAbL5J-lxTCc4E4FHvDMAHDcPUJNZzVBxQ0wxtUZbWaxIRglluhSDnrDJzRbm_QfmT9ombBpiqXVMgT6l8ndAqCmyB-ug_N2VIaRi_34qeRUKhOLziHXhIiARxE"/>
+</div>
+<!-- Center Hole -->
+<div class="absolute w-4 h-4 bg-background rounded-full z-20 border border-white/10"></div>
+</div>
+<!-- Ambient Glow -->
+<div class="absolute -inset-10 bg-primary/10 blur-[100px] rounded-full -z-10 opacity-50"></div>
+</div>
+<div class="mt-12 text-center">
+<h2 class="text-4xl font-extrabold tracking-tight mb-2">Midnight Echoes</h2>
+<p class="text-primary font-medium text-lg">Solaris Drift</p>
+</div>
+</div>
+<!-- Right Side: Scrolling Lyrics -->
+<div class="w-1/2 h-full flex flex-col justify-center">
+<div class="h-[500px] overflow-y-auto no-scrollbar space-y-12 pr-12 mask-fade-edges">
+<p class="text-2xl font-medium text-on-surface-variant opacity-30">Tracing shadows on the ceiling</p>
+<p class="text-2xl font-medium text-on-surface-variant opacity-40">Waiting for the light to break</p>
+<p class="text-4xl font-bold text-on-surface leading-snug">The rhythm of the silence is the only thing I'm feeling</p>
+<p class="text-2xl font-medium text-on-surface-variant opacity-50">In this ethereal landscape we create</p>
+<p class="text-2xl font-medium text-on-surface-variant opacity-40">Caught between the velvet and the chrome</p>
+<p class="text-2xl font-medium text-on-surface-variant opacity-30">Searching for the frequencies of home</p>
+<p class="text-2xl font-medium text-on-surface-variant opacity-20">Searching for the frequencies of home</p>
+</div>
+</div>
+</section>
+<!-- Bottom Playback Shell -->
+<footer class="h-32 px-12 flex flex-col justify-center bg-surface-container-low/50 backdrop-blur-md">
+<!-- Progress Bar -->
+<div class="w-full flex items-center gap-4 mb-4">
+<span class="text-[10px] font-bold text-on-surface-variant tracking-widest">02:45</span>
+<div class="flex-1 h-1.5 bg-surface-container rounded-full relative overflow-hidden">
+<div class="absolute left-0 top-0 h-full w-[65%] bg-gradient-to-r from-primary to-primary-container rounded-full"></div>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant tracking-widest">04:12</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4 w-1/4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="shuffle">shuffle</span>
+</button>
+</div>
+<!-- Main Controls -->
+<div class="flex items-center gap-10">
+<button class="text-on-surface hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="skip_previous" style="font-variation-settings: 'FILL' 1;">skip_previous</span>
+</button>
+<button class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-4xl" data-icon="pause" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<button class="text-on-surface hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" data-icon="skip_next" style="font-variation-settings: 'FILL' 1;">skip_next</span>
+</button>
+</div>
+<div class="flex items-center justify-end gap-6 w-1/4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-xl" data-icon="volume_up">volume_up</span>
+<div class="w-24 h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full w-[80%] bg-on-surface-variant rounded-full"></div>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="queue_music">queue_music</span>
+</button>
+</div>
+</div>
+</footer>
+</main>
+<style>
+        .mask-fade-edges {
+            mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+        }
+    </style>
+</body></html>

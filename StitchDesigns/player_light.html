@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#565B8C",
+                        "on-primary": "#FFFFFF",
+                        "primary-container": "#E0E1FF",
+                        "on-primary-container": "#11164C",
+                        "secondary": "#5B5D72",
+                        "on-secondary": "#FFFFFF",
+                        "secondary-container": "#E0E1F9",
+                        "on-secondary-container": "#181A2C",
+                        "tertiary": "#77536D",
+                        "on-tertiary": "#FFFFFF",
+                        "tertiary-container": "#FFD7F1",
+                        "on-tertiary-container": "#2D1228",
+                        "error": "#BA1A1A",
+                        "on-error": "#FFFFFF",
+                        "error-container": "#FFDAD6",
+                        "on-error-container": "#410002",
+                        "background": "#FBF8FF",
+                        "on-background": "#1B1B1F",
+                        "surface": "#FBF8FF",
+                        "on-surface": "#1B1B1F",
+                        "surface-variant": "#E3E1EC",
+                        "on-surface-variant": "#46464F",
+                        "outline": "#767680",
+                        "outline-variant": "#C7C5D0",
+                        "surface-container-lowest": "#FFFFFF",
+                        "surface-container-low": "#F5F2FA",
+                        "surface-container": "#EFEDF4",
+                        "surface-container-high": "#E9E7EF",
+                        "surface-container-highest": "#E3E1E9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "9999px",
+                        "lg": "9999px",
+                        "xl": "9999px",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Plus Jakarta Sans"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #FBF8FF;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1 !important;
+        }
+        .ethereal-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(180, 185, 240, 0.2) 0%, rgba(251, 248, 255, 0) 70%);
+        }
+        .record-spin {
+            animation: spin 20s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col selection:bg-primary/20">
+<!-- TopAppBar -->
+<header class="bg-background flex justify-between items-center w-full px-6 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full scale-95 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined text-primary">cloud_off</span>
+</button>
+<h1 class="font-headline tracking-tight text-xl font-bold text-on-background">Soundscape</h1>
+</div>
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full scale-95 active:opacity-80 transition-transform">
+<span class="material-symbols-outlined text-primary">dark_mode</span>
+</button>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center px-8 pb-32 pt-4 relative overflow-hidden">
+<!-- Ethereal Background Element -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] ethereal-glow pointer-events-none"></div>
+<!-- Player Canvas -->
+<div class="w-full max-w-lg flex flex-col items-center gap-12 relative z-10">
+<!-- Spinning Record Visual -->
+<div class="relative group">
+<!-- Outer Ring Glow -->
+<div class="absolute inset-0 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-all duration-700"></div>
+<!-- The Record -->
+<div class="relative w-72 h-72 md:w-80 md:h-80 rounded-full bg-surface-container-highest p-1 shadow-2xl border border-outline-variant/30 overflow-hidden record-spin">
+<div class="w-full h-full rounded-full bg-[#121212] relative flex items-center justify-center overflow-hidden">
+<!-- Grooves effect -->
+<div class="absolute inset-0 rounded-full" style="background: repeating-radial-gradient(circle, transparent 0, transparent 2px, rgba(255,255,255,0.03) 3px, transparent 4px);"></div>
+<!-- Album Art Center -->
+<div class="w-32 h-32 md:w-36 md:h-36 rounded-full overflow-hidden border-4 border-[#121212] z-10">
+<img alt="Album Art" class="w-full h-full object-cover" data-alt="Abstract vibrant digital art with swirling purple and blue nebula textures and soft glowing particles" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnEkunb_SJgq35OEpEdHnwSnqtVpoWqZry8HcmNiciahWL1-OOIafVFhJBLx_Nt0ThzsUsrgWew61QwShywc32j-ih2UpN2k5RmtaVstKEe28RjagFrgK7CK2BA3BfZcw_kzvVbYtI2CHLNHfwfCYfG3-uz6w3-XZrgm2OAMF0T7iAHfY-YBSRPvkZcP8sl_NNKiXteNESycxgPsYw7cnrYJaKSo6eP4UcWI1Dn0SI6xUk0GimMw8VMgDi_VGhzJfpq3MN1ZQhjKA"/>
+</div>
+<!-- Center Hole -->
+<div class="absolute w-4 h-4 bg-background rounded-full z-20 shadow-inner"></div>
+</div>
+</div>
+<!-- Playback Needle (Static for design) -->
+<div class="absolute -top-4 -right-8 w-32 h-32 origin-top-right transition-transform rotate-12 pointer-events-none">
+<div class="w-1.5 h-24 bg-gradient-to-b from-outline to-outline-variant rounded-full relative ml-auto mr-4">
+<div class="absolute bottom-0 -left-1 w-3.5 h-6 bg-outline-variant rounded-sm"></div>
+</div>
+</div>
+</div>
+<!-- Song Info -->
+<div class="text-center w-full space-y-2">
+<h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface">Midnight Nebula</h2>
+<p class="text-lg text-on-surface-variant font-medium">Lumina &amp; The Echoes</p>
+</div>
+<!-- Playback Slider -->
+<div class="w-full space-y-4">
+<div class="relative h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="absolute top-0 left-0 h-full w-[42%] bg-gradient-to-r from-primary to-primary-container rounded-full"></div>
+</div>
+<div class="flex justify-between text-xs font-bold tracking-widest text-on-surface-variant uppercase">
+<span>1:45</span>
+<span>4:20</span>
+</div>
+</div>
+<!-- Main Controls -->
+<div class="flex items-center justify-between w-full max-w-sm">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-3xl filled-icon">shuffle</span>
+</button>
+<div class="flex items-center gap-8">
+<button class="text-on-surface hover:text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined text-4xl filled-icon">skip_previous</span>
+</button>
+<button class="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary shadow-xl shadow-primary/10 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-5xl filled-icon">pause</span>
+</button>
+<button class="text-on-surface hover:text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined text-4xl filled-icon">skip_next</span>
+</button>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-3xl filled-icon">repeat</span>
+</button>
+</div>
+<!-- Secondary Actions: Lyrics & Volume -->
+<div class="flex items-center justify-center gap-12 w-full">
+<button class="flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest px-6 py-2.5 rounded-full transition-all border border-outline-variant/15">
+<span class="material-symbols-outlined text-xl filled-icon">lyrics</span>
+<span class="font-body text-[11px] uppercase tracking-[0.05em] font-bold text-on-surface">Lyrics</span>
+</button>
+<div class="flex items-center gap-3 flex-1 max-w-[140px]">
+<span class="material-symbols-outlined text-on-surface-variant text-xl filled-icon">volume_down</span>
+<div class="flex-1 h-1 bg-surface-container-highest rounded-full">
+<div class="w-2/3 h-full bg-on-surface-variant rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-4 bg-background/80 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-4px_24px_rgba(180,185,240,0.15)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-on-surface transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">menu_book</span>
+<span class="font-body text-[11px] uppercase tracking-[0.05em] font-bold">Audiobooks</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-5 py-2 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1 filled-icon">library_music</span>
+<span class="font-body text-[11px] uppercase tracking-[0.05em] font-bold">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-on-surface transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">search</span>
+<span class="font-body text-[11px] uppercase tracking-[0.05em] font-bold">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-on-surface transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-body text-[11px] uppercase tracking-[0.05em] font-bold">Profile</span>
+</a>
+</nav>
+</body></html>

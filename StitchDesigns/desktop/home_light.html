@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#aab2f4",
+                        "on-surface": "#2d333b",
+                        "background": "#f8f9ff",
+                        "primary-dim": "#464e89",
+                        "tertiary-container": "#f0cbf8",
+                        "primary-container": "#aab2f4",
+                        "on-secondary-container": "#4e515b",
+                        "on-tertiary-fixed": "#482e52",
+                        "tertiary-dim": "#65496e",
+                        "inverse-surface": "#0b0e12",
+                        "error-container": "#f97386",
+                        "on-secondary-fixed": "#3c3f49",
+                        "tertiary-fixed": "#f0cbf8",
+                        "on-tertiary": "#fff7fb",
+                        "surface-variant": "#dde3ee",
+                        "primary-fixed": "#aab2f4",
+                        "inverse-on-surface": "#9b9da2",
+                        "on-primary-fixed": "#0e1751",
+                        "secondary-container": "#e0e2ee",
+                        "on-error-container": "#6e0523",
+                        "error": "#a8364b",
+                        "primary-fixed-dim": "#9ca4e5",
+                        "outline-variant": "#acb2bd",
+                        "on-tertiary-fixed-variant": "#664a70",
+                        "tertiary-fixed-dim": "#e1bdea",
+                        "secondary-fixed-dim": "#d2d4e0",
+                        "on-secondary": "#f9f8ff",
+                        "surface": "#f8f9ff",
+                        "on-surface-variant": "#595f69",
+                        "secondary": "#5c5f69",
+                        "on-secondary-fixed-variant": "#585b65",
+                        "on-background": "#2d333b",
+                        "on-primary-container": "#272f68",
+                        "on-primary": "#faf8ff",
+                        "error-dim": "#6b0221",
+                        "surface-dim": "#d5dae5",
+                        "surface-container": "#eaeef7",
+                        "secondary-dim": "#50535d",
+                        "primary": "#525b96",
+                        "outline": "#757b85",
+                        "secondary-fixed": "#e0e2ee",
+                        "surface-container-high": "#e4e8f2",
+                        "on-error": "#fff7f7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#dde3ee",
+                        "surface-container-low": "#f1f3fb",
+                        "on-primary-fixed-variant": "#303872",
+                        "surface-bright": "#f8f9ff",
+                        "surface-tint": "#525b96",
+                        "tertiary": "#72557b",
+                        "on-tertiary-container": "#5c4166"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+        h1, h2, h3, .brand-font { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-player {
+            backdrop-filter: blur(20px);
+            background: rgba(248, 249, 255, 0.7);
+        }
+        ::-webkit-scrollbar { width: 0px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Layout Container -->
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar (Shared Component) -->
+<aside class="flex flex-col h-full py-8 px-6 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-xl h-screen w-64 border-none z-50">
+<!-- Mac Controls -->
+<div class="flex gap-2 mb-8">
+<div class="w-3.5 h-3.5 rounded-full bg-[#FF5F57]"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#FEBC2E]"></div>
+<div class="w-3.5 h-3.5 rounded-full bg-[#28C840]"></div>
+</div>
+<div class="mb-10 px-2">
+<div class="text-xl font-bold tracking-tighter text-slate-800 dark:text-slate-100">Velvet Echo</div>
+<div class="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold mt-1">The Ethereal Gallery</div>
+</div>
+<nav class="flex-1 space-y-6">
+<div class="space-y-1">
+<button class="w-full flex items-center gap-4 px-4 py-3 rounded-full text-slate-500 dark:text-slate-400 font-['Plus_Jakarta_Sans'] tracking-wide text-sm font-medium hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span>Search</span>
+</button>
+<button class="w-full flex items-center gap-4 px-4 py-3 rounded-full text-slate-500 dark:text-slate-400 font-['Plus_Jakarta_Sans'] tracking-wide text-sm font-medium hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="book_5">book_5</span>
+<span>Audiobooks</span>
+</button>
+<button class="w-full flex items-center gap-4 px-4 py-3 rounded-full text-indigo-700 dark:text-indigo-300 font-bold font-['Plus_Jakarta_Sans'] tracking-wide text-sm bg-surface-container shadow-sm">
+<span class="material-symbols-outlined" data-icon="library_music" style="font-variation-settings: 'FILL' 1;">library_music</span>
+<span>Library</span>
+</button>
+<button class="w-full flex items-center gap-4 px-4 py-3 rounded-full text-slate-500 dark:text-slate-400 font-['Plus_Jakarta_Sans'] tracking-wide text-sm font-medium hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</button>
+</div>
+<div class="pt-8">
+<p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Your Collections</p>
+<div class="space-y-1">
+<button class="w-full text-left px-4 py-2 text-sm text-slate-600 hover:text-primary transition-colors">Ethereal Beats</button>
+<button class="w-full text-left px-4 py-2 text-sm text-slate-600 hover:text-primary transition-colors">Study Flows</button>
+<button class="w-full text-left px-4 py-2 text-sm text-slate-600 hover:text-primary transition-colors">Twilight Jazz</button>
+</div>
+</div>
+</nav>
+<div class="mt-auto px-4">
+<div class="p-4 rounded-lg bg-primary-container/20 border border-primary/10">
+<p class="text-xs font-bold text-primary mb-1">PRO GALLERY</p>
+<p class="text-[11px] text-on-surface-variant leading-tight">Unlock lossless audio and immersive spatial visualizers.</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full relative overflow-y-auto bg-surface">
+<!-- TopAppBar (Shared Component) -->
+<header class="flex items-center justify-between px-12 w-full sticky top-0 z-40 bg-transparent h-16 backdrop-blur-md">
+<div class="flex items-center gap-8 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pl-12 pr-4 py-2 bg-surface-container-low border border-outline-variant/10 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Search gallery..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="p-2 text-slate-400 hover:bg-slate-100/50 rounded-full transition-opacity opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="light_mode">light_mode</span>
+</button>
+<button class="p-2 text-slate-400 hover:bg-slate-100/50 rounded-full transition-opacity opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of a professional man with a neutral expression and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZ5YHSlH3IohbeUCoNdeqUhv1m_TE8SB83xitnEw6FysN89MBlavrqZPaqx6buzGUSAtzeIOdK97w1xAGMCnCE4wgDgvQ8Lbho6Nl9dy2makbr7Mz9iZnJQnScsyWMFeBfDiVcVdmUcNVsYf7XgC75u8iGU-NygwG_sJJPaOnm81dXbIOxJM0qBk19sePNZXP591CrzDzCg14-NCR1bI1su90u1i2RTBW7TgeH6Ee0GPwb8DNtiFL6Fnw2-7kkklVDP1YVP3JCtBY"/>
+</div>
+</div>
+</header>
+<div class="px-12 py-8 space-y-12 pb-32">
+<!-- Made For You Bento Section -->
+<section>
+<div class="flex items-end justify-between mb-8">
+<div>
+<h2 class="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Made For You</h2>
+<p class="text-on-surface-variant font-medium">Personalized sonics based on your twilight listening.</p>
+</div>
+<button class="text-primary font-bold text-sm hover:underline">View All Gallery</button>
+</div>
+<div class="grid grid-cols-12 gap-6 h-[400px]">
+<!-- Large Featured Card -->
+<div class="col-span-8 relative group overflow-hidden rounded-lg bg-primary-container">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80" data-alt="abstract artistic landscape with surreal purple and blue atmospheric clouds reflecting over a calm digital water surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFEcfjhowMhLunDRqN_Rn29cQ8oRvlZ-ulwXyFEoMpJOe69C61FgFOaG_nEe7XKzTOuJ1wFr5o3irTpnXMEwzLDc7k_KznWFSz4aZL8tSHMETX6zKepqLmVJ1oHshWGnH8o40Hg-EJ3AplpUu4rLf59rGVkFXhrZEAbFJKJwmQSqTfB_urXlKsymcfy3oHoeqpA3dRs9SSQxmnxp-7TPxi65oyitY4vAZWwv55iBGdU96xA8b5Wm-v4WlHn7eqSF7LfzplY3J_Nns"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-transparent to-transparent"></div>
+<div class="absolute bottom-8 left-8 right-8">
+<span class="bg-surface-container-lowest/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white uppercase tracking-widest">Daily Echo</span>
+<h3 class="text-5xl font-extrabold text-white mt-4 mb-2">Morning Mist</h3>
+<p class="text-white/80 text-lg font-medium mb-6">A curated blend of ambient piano and soft electronic textures.</p>
+<button class="flex items-center gap-2 bg-surface-container-lowest text-primary px-6 py-3 rounded-full font-bold shadow-xl hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                                    Play Session
+                                </button>
+</div>
+</div>
+<!-- Secondary Bento Item -->
+<div class="col-span-4 grid grid-rows-2 gap-6">
+<div class="relative group overflow-hidden rounded-lg bg-tertiary-container">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="vibrant abstract close-up of a vinyl record playing with colorful neon light reflections on the spinning surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzrANbFERHFw6S81A8ak8oZ9DmSaSff7ybLWiQel9mrRNh0nFsqNs5pOYU6CXGYx6XGhmfhqh7H33cbR6Bn-1RlFiocxHC6VfTIjeNFBNssBBrNzgpMUmJ37p6EA2j65pDPOu97HCZM3zqRsrxtWvieAS0TotOA_VHpJZeuwQprXxC9N6GKsZR-5QPeE9cvKYTcH1Jjg7anHqLWP6Qokg7laL0Z6RbP4GeE2ZFTYznBUiUVKxzlYocLLo2ZvEwLBikY94dHIc89qI"/>
+<div class="absolute inset-0 bg-on-surface/20 group-hover:bg-on-surface/10 transition-colors"></div>
+<div class="absolute inset-0 p-6 flex flex-col justify-end">
+<h4 class="text-xl font-bold text-white">The Pulse</h4>
+<p class="text-white/70 text-sm">Deep bass and neon rhythms.</p>
+</div>
+</div>
+<div class="relative group overflow-hidden rounded-lg bg-surface-container-highest">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="minimalist studio photography of a person wearing sleek modern headphones in a soft pastel purple environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDe2iRLbbkSSWEusq2FscZAxjNn1W6WAllyp8mS67HxfAKlwLJrzZz23zVrORYYvvqvJ-7FCiIJHUSdlOz6tfoSAg0QaGBSxryNA_s0g99RakYSvkK4jPePZrGi5vF1B8qHmSkaFIKfjZYRHsas2cXsLVrT64UHR4gItr7RHzPofqNMgTby4yG1hZRQPtxgLOeM2XmcBzyx2Q9K5DzjWk62ZCtIA57LsIHasK890cdKcyQWMmCC0dtv-nLCmWN_QVE8UyAnvDT3DzY"/>
+<div class="absolute inset-0 bg-on-surface/20 group-hover:bg-on-surface/10 transition-colors"></div>
+<div class="absolute inset-0 p-6 flex flex-col justify-end">
+<h4 class="text-xl font-bold text-white">Pure Focus</h4>
+<p class="text-white/70 text-sm">Lo-fi beats for intense flow.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Downloaded Content Section -->
+<section>
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-2xl font-bold tracking-tight text-on-surface">Downloaded Gallery</h2>
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-5 gap-8">
+<!-- Album Card 1 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-square rounded-lg bg-surface-container-lowest shadow-sm overflow-hidden mb-4 group-hover:shadow-xl transition-shadow duration-300">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="stylish minimal album cover art featuring abstract geometric shapes in muted earthy tones of sage and cream" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_kJ-uHKtuMSur7aVa63pb_nWP50z5WCAzmmRgNYhE_8rvhDU8E6ONDIm1Z7YFtYmZJJYYTWEU-MOryxwzFzRm13OmkXSIXW1xGcnBNtaKzzB0NUpguk9dU6camHtam4bh0D6S0nfy4A6A6c75cWNj8sou16JH6QpkbW6l9OH0gEnL_5NIl_mw6p1_Eu8wxFGhpKY5hIK7aqLmA_jhyfGeIGTHI4Su8sgrC8o38ZnX2KVBtwsJoAYUem9KNWTv5tq6H7qb4su5StA"/>
+<button class="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-primary text-on-primary shadow-2xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<h3 class="font-bold text-on-surface group-hover:text-primary transition-colors">Ethereal Static</h3>
+<p class="text-sm text-on-surface-variant">Liaison Shadows</p>
+</div>
+<!-- Album Card 2 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-square rounded-lg bg-surface-container-lowest shadow-sm overflow-hidden mb-4 group-hover:shadow-xl transition-shadow duration-300">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="dramatic wide shot of an empty concert hall with soft blue atmospheric stage lighting and mist" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMvIZFPH4-HT9a8z_HsSShZSQ6U0dT_cSw0xa2wMRUvdCneHDkraxOVKh9SvL3QDypPVfK6cX1BJUMBGBgx01rociT1MnC28Nsy7vHA-bfJPSkgmbDmmCBVm2nJv9Ujmsxnjhm6zfDWVL4ApekBbNUGuJMjm6szdXe_lDAIumNEd4Sl7J0L-i0os2XVogOuikhDpAtaEr8Uv549vnAVJmGbd_L0bKnG3EIVx-zfyXkgLVjo2itjt0dwdeQYG1NIhwfqgAh0ad7ENA"/>
+<button class="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-primary text-on-primary shadow-2xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<h3 class="font-bold text-on-surface group-hover:text-primary transition-colors">Echoes of Silence</h3>
+<p class="text-sm text-on-surface-variant">Silent Orchestras</p>
+</div>
+<!-- Album Card 3 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-square rounded-lg bg-surface-container-lowest shadow-sm overflow-hidden mb-4 group-hover:shadow-xl transition-shadow duration-300">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="creative digital art showing a single glowing neon line forming the shape of a heart in a dark void" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUo-iBclyVt84iqLeSlr0kxzO1_cNHyEjqXeQ6Et8KWI1zp1xy5ZhrshM-yeWE2gbnYFD7iQ7KKwjHUG8N47dQe3Jmlhk2XsAtDQW4aRbCibIVosNkYMimTdnPTvwM0DICF0VjsTdX33cmyFi_q7njqRSfYppuUlOwUFszGPYz4mKl0V9MLfBbtuCiRMd3mL75kJqXq1cnaZOCTMavPSvzlSH8HLMtwaMFzZ7LIyayTqOvmLowIV6DFdOZacOIZ0WXsN1odIxVB2Q"/>
+<button class="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-primary text-on-primary shadow-2xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<h3 class="font-bold text-on-surface group-hover:text-primary transition-colors">Vivid Dreams</h3>
+<p class="text-sm text-on-surface-variant">The Dreamers</p>
+</div>
+<!-- Album Card 4 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-square rounded-lg bg-surface-container-lowest shadow-sm overflow-hidden mb-4 group-hover:shadow-xl transition-shadow duration-300">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="abstract explosion of colorful powder on a dark background creating a sense of dynamic energy and motion" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL7uMCoDAP3AeUhSsff94Y4o-G4K47bJbYK-V6XNk1XT458oaDHf7Q_38Rt4HVTxjuk1W-domt3gQ4kmeXSDaYUwavXRCvlzj6aVGYlbMXAKIrQSJfnmMBOifANKCBW6nQMfJ9287hSO9tlKDqKo0QTdMSG3EZ0sPvhAGk5Tp3_KtZ9j_4Qb8jsOQ6_nLQaHINLJ_Z65L4V96lhmgW08bHqiw3hSVpW8dJI6uy8qwIwq7osj1CpBgnChvF6VjUI_btuuqFHTU1dP4"/>
+<button class="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-primary text-on-primary shadow-2xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<h3 class="font-bold text-on-surface group-hover:text-primary transition-colors">Fragmented Soul</h3>
+<p class="text-sm text-on-surface-variant">Sonic Alchemy</p>
+</div>
+<!-- Album Card 5 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-square rounded-lg bg-surface-container-lowest shadow-sm overflow-hidden mb-4 group-hover:shadow-xl transition-shadow duration-300">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="overhead view of a minimalist forest floor with pine needles and moss in deep natural greens" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFu_jAE5Ackn0Dyw2d8B0xH_64FbFzgxRf5puv13L4Ueiu8aa43JCJ0lQl3s9B3Q4-xYYOrCEkyjDXZZzjO6vqg5dtR5qWN3tLyU1ohN9fOFdA4F9-0NYK57D4OkKrFbDm5h53yrE5UvValQ2QHcuJRHtEzfA1rupGkLM2EMFxfGsvySxOnKvRS42uG6dk2WIjW_4CSGV0Fl-XIikYBrKh-K-6CdaLgfPK9m5UXGVQpYqfJhxEc7AXJGt246sre8n_ScHgI99SEXo"/>
+<button class="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-primary text-on-primary shadow-2xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<h3 class="font-bold text-on-surface group-hover:text-primary transition-colors">Nature's Hum</h3>
+<p class="text-sm text-on-surface-variant">Wild Origins</p>
+</div>
+</div>
+</section>
+<!-- Global Echoes Trending Section -->
+<section class="pb-12">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-2xl font-bold tracking-tight text-on-surface">Global Echoes</h2>
+<button class="text-on-surface-variant hover:text-primary text-sm font-bold transition-colors">Trending Now</button>
+</div>
+<div class="space-y-4">
+<!-- Track Item 1 -->
+<div class="group flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-6">
+<span class="text-on-surface-variant font-bold w-4">01</span>
+<div class="w-12 h-12 rounded bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="close-up of a vintage analog synthesizer with colorful glowing knobs and sliders" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDP7O9peQHMahQ2r7Qh7mPWYKhFMB-h8Z-PuJwPdINOB7AJkd7bkHJHrxa78Zko2mAtmKet0imooSvM4Hzj_CovuKj_iGGOEEuwlkLhYRHLBqxhAZv-hVIXhIsZxsrTvmz25M33ATXjZe6vT9AulgSAnM58cASI7r4NnDYxDeUfaqFliPpb3K4ct_Bq2l6ESvGMz710ktQzyzEzBHGP0053RF0TEP7QR9vfh7Rd4WSBZNLiXLpsOxzNbZ3p_0RhKG6kyoeoDe6FV-w"/>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Velvet Horizon</h4>
+<p class="text-xs text-on-surface-variant">The Midnight Society</p>
+</div>
+</div>
+<div class="flex items-center gap-12">
+<p class="text-xs text-on-surface-variant font-medium">3:42</p>
+<div class="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-outline hover:text-primary"><span class="material-symbols-outlined text-xl" data-icon="favorite">favorite</span></button>
+<button class="text-outline hover:text-primary"><span class="material-symbols-outlined text-xl" data-icon="more_horiz">more_horiz</span></button>
+</div>
+</div>
+</div>
+<!-- Track Item 2 -->
+<div class="group flex items-center justify-between p-4 rounded-lg bg-surface-container-low transition-colors">
+<div class="flex items-center gap-6">
+<span class="text-on-surface-variant font-bold w-4">02</span>
+<div class="w-12 h-12 rounded bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="gradient flow of silk-like fabric in soft shades of lavender and pink" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuaWDTj0rsWxOD5XdaCpmmHR37cL0z6QsHusiTGgLtSadrwx9xEFM1cwwusR1c9RzjJwssSBj0-1KqqeAWwzHvyVcXFTG3-836-Lgk9BGnIB2u6cd0jH7fZCFqeWOwT5z1g8yLBbdrimvNarnoTWpDyW2nVivKKVXtUiTl9SPcgoIm0lpHnuzMN-0aPWfJ9QcTY56AMfQDK-RF0z0Vb7K62ScUXy_xEzqBDJlcJc7SFYdFVdSByq83u4Xo-vpjV7PNTB6eHbDfRkA"/>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Digital Solace</h4>
+<p class="text-xs text-on-surface-variant">Analog Dreams</p>
+</div>
+</div>
+<div class="flex items-center gap-12">
+<p class="text-xs text-on-surface-variant font-medium">4:15</p>
+<div class="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-outline hover:text-primary"><span class="material-symbols-outlined text-xl" data-icon="favorite">favorite</span></button>
+<button class="text-outline hover:text-primary"><span class="material-symbols-outlined text-xl" data-icon="more_horiz">more_horiz</span></button>
+</div>
+</div>
+</div>
+<!-- Track Item 3 -->
+<div class="group flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-6">
+<span class="text-on-surface-variant font-bold w-4">03</span>
+<div class="w-12 h-12 rounded bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="a person dancing gracefully in a sun-drenched studio with dust motes floating in the air" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtI4t8_xhJ2_XGpneWhMjjDq-q-Wdy3FmT0uomRSwCEHv0aJYLVZn69vraan-pVa7OH1hcu11_7kGLZ9PJoeQV00IhGakbQT_kan8rEvbbAOn8AqI-IY7KghtlypjT02LTWrqDTXUINFngNMq-qqZxAi-4eXsJ_2PpsMM584PBzicor1k6oIPx4HX29td2FF4vUmEgFIMx9j_oOPgcm-aKr935kpje_mfFLNzyYeyeNWP0fBGpDPHXW1rQCdCZWkbXMfHoMk6q-WA"/>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Weightless</h4>
+<p class="text-xs text-on-surface-variant">Gravity Flux</p>
+</div>
+</div>
+<div class="flex items-center gap-12">
+<p class="text-xs text-on-surface-variant font-medium">2:58</p>
+<div class="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-outline hover:text-primary"><span class="material-symbols-outlined text-xl" data-icon="favorite">favorite</span></button>
+<button class="text-outline hover:text-primary"><span class="material-symbols-outlined text-xl" data-icon="more_horiz">more_horiz</span></button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Persistent Player Bar (Glassmorphism) -->
+<footer class="fixed bottom-6 left-[280px] right-6 h-24 glass-player rounded-lg flex items-center px-8 z-50 border border-white/40 shadow-2xl">
+<!-- Track Info -->
+<div class="flex items-center gap-4 w-1/4">
+<div class="w-14 h-14 rounded-md shadow-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="close-up of the previous morning mist album art" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLclqgxcMwhMsY4NU0ivf2XjHxGBJFSViL8pyWpQKu2RX5XVYML3NA3KZR9kkfBiTwDVl8GOYX69DFT3MQHww45524bZKcIHnWcZ3fAfgPMIeJIKZzGHeOVcSgWaUh-wpbLRthsVUYdiTaUX5pCv-KskWVNFJ2_Q1qzyxyXeEf0MPWAeKU6drNc-Os2xk8Z7L192p16amMZLi1toVw5jPkW2OtL2zyvfXkJiuz4Z9Bw3qbMiLi0tLnsf-8wpnPPU9ZXwcgWdre3Rg"/>
+</div>
+<div class="min-w-0">
+<h4 class="font-bold text-on-surface truncate">Morning Mist</h4>
+<p class="text-xs text-on-surface-variant font-medium truncate">Daily Echo Session</p>
+</div>
+<button class="text-primary ml-2"><span class="material-symbols-outlined" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span></button>
+</div>
+<!-- Controls -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="flex items-center gap-8">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="shuffle">shuffle</span></button>
+<button class="text-on-surface hover:text-primary transition-colors"><span class="material-symbols-outlined text-3xl" data-icon="skip_previous" style="font-variation-settings: 'FILL' 1;">skip_previous</span></button>
+<button class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-xl hover:scale-105 transition-transform"><span class="material-symbols-outlined text-3xl" data-icon="pause" style="font-variation-settings: 'FILL' 1;">pause</span></button>
+<button class="text-on-surface hover:text-primary transition-colors"><span class="material-symbols-outlined text-3xl" data-icon="skip_next" style="font-variation-settings: 'FILL' 1;">skip_next</span></button>
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="repeat">repeat</span></button>
+</div>
+<div class="flex items-center gap-3 w-full max-w-lg">
+<span class="text-[10px] font-bold text-on-surface-variant">1:45</span>
+<div class="flex-1 h-1 bg-secondary-container rounded-full relative overflow-hidden group cursor-pointer">
+<div class="absolute inset-y-0 left-0 w-1/3 bg-primary group-hover:bg-primary-dim transition-colors"></div>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant">3:24</span>
+</div>
+</div>
+<!-- Volume & Extra -->
+<div class="w-1/4 flex items-center justify-end gap-6">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="lyrics">lyrics</span></button>
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="queue_music">queue_music</span></button>
+<div class="flex items-center gap-2 w-32">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="volume_up">volume_up</span>
+<div class="flex-1 h-1 bg-secondary-container rounded-full relative overflow-hidden group cursor-pointer">
+<div class="absolute inset-y-0 left-0 w-2/3 bg-on-surface-variant group-hover:bg-primary transition-colors"></div>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="open_in_full">open_in_full</span></button>
+</div>
+</footer>
+</main>
+</div>
+</body></html>
