@@ -58,7 +58,7 @@ struct MusicLibraryView: View {
                                         // Selection indicator
                                         ZStack {
                                             Circle()
-                                                .strokeBorder(isSelected(track) ? t.primary : t.outlineVariant, lineWidth: 1.5)
+                                                .strokeBorder(isSelected(track) ? t.primary : t.outlineVariant.opacity(0.3), lineWidth: 1.5)
                                                 .frame(width: 22, height: 22)
                                             if isSelected(track) {
                                                 Circle()
@@ -331,6 +331,7 @@ struct VinylView: View {
     var size: CGFloat = 180
     
     @State private var rotation: Double = 0
+    @State private var artworkAccent: Color = .clear
     
     var body: some View {
         ZStack {
@@ -349,6 +350,26 @@ struct VinylView: View {
                         )
                     )
                 
+                // Color sheen from the artwork
+                if artworkAccent != .clear {
+                    Circle()
+                        .fill(
+                            AngularGradient(
+                                colors: [
+                                    artworkAccent.opacity(0.20),
+                                    .clear,
+                                    artworkAccent.opacity(0.10),
+                                    .clear,
+                                    artworkAccent.opacity(0.20)
+                                ],
+                                center: .center,
+                                angle: .degrees(45)
+                            )
+                        )
+                        .blendMode(.screen)
+                        .animation(.easeInOut(duration: 0.8), value: artworkAccent)
+                }
+                
                 // Grooves
                 ForEach([0.12, 0.22, 0.32, 0.42, 0.52, 0.62, 0.72, 0.82, 0.92], id: \.self) { r in
                     Circle()
@@ -362,7 +383,7 @@ struct VinylView: View {
                     .frame(width: size * 0.2, height: size * 0.2)
                 Circle()
                     .stroke(Color.white.opacity(0.07), lineWidth: 1)
-                    .frame(width: size * 0.48, height: size * 0.48)
+                    .frame(width: size * 0.62, height: size * 0.62)
                 
                 // Center art
                 AsyncImageLoader(path: artworkPath) { img in
@@ -370,16 +391,16 @@ struct VinylView: View {
                         .resizable()
                         .interpolation(.medium)
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: size * 0.36, height: size * 0.36)
+                        .frame(width: size * 0.62, height: size * 0.62)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(Color(r: 12, g: 12, b: 15), lineWidth: 3))
                 } placeholder: {
                     Circle()
                         .fill(Color(r: 50, g: 50, b: 70))
-                        .frame(width: size * 0.36, height: size * 0.36)
+                        .frame(width: size * 0.62, height: size * 0.62)
                         .overlay(
                             Image(systemName: "music.note")
-                                .font(.system(size: size * 0.08))
+                                .font(.system(size: size * 0.12))
                                 .foregroundStyle(.white.opacity(0.3))
                         )
                 }
@@ -395,9 +416,26 @@ struct VinylView: View {
         }
         .onAppear {
             updateRotation()
+            extractColor(from: artworkPath)
         }
         .onChange(of: isPlaying) { _, _ in
             updateRotation()
+        }
+        .onChange(of: artworkPath) { _, path in
+            extractColor(from: path)
+        }
+    }
+    
+    private func extractColor(from path: String?) {
+        guard let path, let image = NSImage(contentsOfFile: path) else {
+            withAnimation(.easeInOut(duration: 0.4)) { artworkAccent = .clear }
+            return
+        }
+        Task.detached(priority: .utility) {
+            let color = extractDominantColor(from: image) // Uses helper from NowPlayingBar.swift
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.8)) { artworkAccent = color }
+            }
         }
     }
     
@@ -442,6 +480,7 @@ struct TrackRow: View {
                 Text(track.artist ?? "Unknown Artist")
                     .font(.system(size: 11))
                     .foregroundStyle(t.onSurfaceVariant)
+                    .tracking(0.5)
                     .lineLimit(1)
             }
             

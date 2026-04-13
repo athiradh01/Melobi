@@ -37,8 +37,42 @@ enum SortOption: String, CaseIterable {
 @Observable
 final class ThemeManager {
     static let shared = ThemeManager()
-    var overrideScheme: ColorScheme? = nil
-    private init() {}
+    
+    private static let schemeKey = "app.themeScheme"
+    private static let lightThemeKey = "app.lightTheme"
+    
+    var overrideScheme: ColorScheme? {
+        didSet { saveScheme() }
+    }
+    var activeLightTheme: LightThemeOption {
+        didSet { UserDefaults.standard.set(activeLightTheme.rawValue, forKey: Self.lightThemeKey) }
+    }
+    
+    private init() {
+        // Restore light theme
+        if let raw = UserDefaults.standard.string(forKey: Self.lightThemeKey),
+           let theme = LightThemeOption(rawValue: raw) {
+            activeLightTheme = theme
+        } else {
+            activeLightTheme = .mintBreeze
+        }
+        // Restore dark/light override
+        let schemeRaw = UserDefaults.standard.integer(forKey: Self.schemeKey)
+        switch schemeRaw {
+        case 1:  overrideScheme = .light
+        case 2:  overrideScheme = .dark
+        default: overrideScheme = nil
+        }
+    }
+    
+    private func saveScheme() {
+        switch overrideScheme {
+        case .light:   UserDefaults.standard.set(1, forKey: Self.schemeKey)
+        case .dark:    UserDefaults.standard.set(2, forKey: Self.schemeKey)
+        default:       UserDefaults.standard.set(0, forKey: Self.schemeKey)
+        }
+    }
+    
     func toggle(current: ColorScheme) {
         overrideScheme = current == .dark ? .light : .dark
     }
@@ -58,46 +92,66 @@ struct ContentView: View {
     let db: DatabasePool
     
     private var activeScheme: ColorScheme { themeManager.overrideScheme ?? systemScheme }
-    private var t: Theme { Theme(scheme: activeScheme) }
+    private var t: Theme { Theme(scheme: activeScheme, lightPalette: themeManager.activeLightTheme.theme) }
+    
+    /// Sorted tracks matching the library's current display order
+    private var sortedTracks: [Track] {
+        let tracks = library.filteredTracks
+        switch sortOption {
+        case .title:
+            return tracks.sorted { ($0.title ?? "").localizedCompare($1.title ?? "") == (sortAscending ? .orderedAscending : .orderedDescending) }
+        case .artist:
+            return tracks.sorted { ($0.artist ?? "").localizedCompare($1.artist ?? "") == (sortAscending ? .orderedAscending : .orderedDescending) }
+        case .dateAdded:
+            return sortAscending ? tracks.sorted { $0.dateAdded < $1.dateAdded } : tracks.sorted { $0.dateAdded > $1.dateAdded }
+        case .duration:
+            return sortAscending ? tracks.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) } : tracks.sorted { ($0.durationMs ?? 0) > ($1.durationMs ?? 0) }
+        }
+    }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            HStack(spacing: 0) {
-                sidebar
-                
+        HStack(spacing: 0) {
+            sidebar
+            
+            ZStack(alignment: .bottom) {
                 // Main content — instant section switch, child animations preserved
                 mainContent
                     .animation(.none, value: section)
-            }
-            
-            if engine.currentTrack != nil || engine.currentAudiobook != nil {
-                if !engine.isNowPlayingViewActive || engine.currentAudiobook == nil {
-                    NowPlayingBar()
-                        .padding(.horizontal, 24)
-                        .padding(.leading, 230)
-                        .padding(.bottom, 12)
+                    .background(t.background)
+                
+                if engine.currentTrack != nil || engine.currentAudiobook != nil {
+                    if !engine.isNowPlayingViewActive || engine.currentAudiobook == nil {
+                        NowPlayingBar()
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 12)
+                    }
                 }
             }
+            .background(t.background)
+
         }
         .background(t.background)
         .preferredColorScheme(themeManager.overrideScheme)
         .environment(library)
         .environment(engine)
         .environment(lyrics)
+        .id(themeManager.activeLightTheme)
     }
     
     // MARK: - Sidebar (no Import Folder)
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Velvet Echo")
+                Text(themeManager.activeLightTheme.rawValue)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(t.onSurface)
                     .tracking(-0.5)
+                    .lineLimit(1)
                 Text("THE ETHEREAL GALLERY")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(t.outlineVariant)
                     .tracking(2)
+                    .lineLimit(1)
             }
             .padding(.horizontal, 20)
             .padding(.top, 28)
@@ -145,6 +199,7 @@ struct ContentView: View {
                                 .frame(width: 20)
                             Text(sec.rawValue)
                                 .font(.system(size: 13, weight: section == sec ? .bold : .medium))
+                                .lineLimit(1)
                             Spacer()
                         }
                         .foregroundStyle(section == sec ? t.primary : t.onSurfaceVariant)
@@ -161,27 +216,57 @@ struct ContentView: View {
             
             Spacer()
             
-            // Theme toggle — icon only (sun / crescent moon)
-            Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    themeManager.toggle(current: activeScheme)
+            // Theme toggle & palette selector
+            HStack(spacing: 8) {
+                // Light/Dark toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        themeManager.toggle(current: activeScheme)
+                    }
+                } label: {
+                    ZStack {
+                        Image(systemName: activeScheme == .dark ? "sun.max.fill" : "moon.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(activeScheme == .dark ? Color.orange : t.primary)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .frame(width: 32, height: 32)
+                    .background(t.surfaceContainerHigh.opacity(0.5))
+                    .clipShape(Circle())
                 }
-            } label: {
-                ZStack {
-                    Image(systemName: activeScheme == .dark ? "sun.max.fill" : "moon.fill")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(activeScheme == .dark ? Color.orange : t.primary)
-                        .contentTransition(.symbolEffect(.replace))
+                .buttonStyle(.plain)
+                
+                // Theme Palette Selector (only visible in Light Mode)
+                if activeScheme != .dark {
+                    Menu {
+                        ForEach(LightThemeOption.allCases) { option in
+                            Button(option.rawValue) {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    themeManager.activeLightTheme = option
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(themeManager.activeLightTheme.rawValue)
+                                .font(.system(size: 11, weight: .semibold))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 9))
+                        }
+                        .foregroundStyle(t.primary)
+                        .padding(.horizontal, 10)
+                        .frame(height: 32)
+                        .background(t.surfaceContainerHigh.opacity(0.5))
+                        .clipShape(Capsule())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
-                .frame(width: 36, height: 36)
-                .background(t.surfaceContainerHigh.opacity(0.5))
-                .clipShape(Circle())
             }
-            .buttonStyle(.plain)
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
         }
-        .frame(width: 230)
+        .frame(minWidth: 150, idealWidth: 230, maxWidth: 230)
         .background(.ultraThinMaterial)
         .background(t.sidebarBg)
     }
@@ -197,12 +282,21 @@ struct ContentView: View {
                 HomeView(
                     onNavigateToLibrary: { section = .music },
                     onPlayTrack: { track in
-                        section = .music
-                        engine.queue = library.tracks
-                        engine.currentQueueIndex = library.tracks.firstIndex(where: { $0.id == track.id }) ?? 0
+                        let sorted = sortedTracks
+                        engine.queue = sorted
+                        engine.currentQueueIndex = sorted.firstIndex(where: { $0.id == track.id }) ?? 0
                         engine.load(track: track)
                         lyrics.load(for: URL(fileURLWithPath: track.filePath))
                         engine.play()
+                    },
+                    onPlayAudiobook: { book in
+                        let chapters = library.chapters(for: book, db: db)
+                        let resumePos = library.resumePosition(for: book, db: db)
+                        engine.load(audiobook: book, resumePosition: resumePos, chapters: chapters)
+                        engine.play()
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.isNowPlayingViewActive = true
+                        }
                     },
                     db: db
                 )

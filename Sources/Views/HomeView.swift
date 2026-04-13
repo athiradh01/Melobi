@@ -10,9 +10,11 @@ struct HomeView: View {
     
     var onNavigateToLibrary: () -> Void
     var onPlayTrack: (Track) -> Void
+    var onPlayAudiobook: (Audiobook) -> Void
     let db: DatabasePool
     
     @State private var albums: [AlbumInfo] = []
+    @State private var randomTracks: [Track] = []
     
     private var t: Theme { Theme(scheme: colorScheme) }
     
@@ -31,20 +33,22 @@ struct HomeView: View {
                 }
                 .padding(.top, 8)
                 
-                // Hero bento
-                if library.tracks.count >= 3 {
+                // Hero bento — Using Recently Added and Random
+                if let mostRecent = library.tracks.sorted(by: { $0.dateAdded > $1.dateAdded }).first {
                     HStack(spacing: 10) {
-                        heroCard(track: library.tracks[0], large: true)
+                        heroCard(track: mostRecent, large: true)
                             .frame(maxWidth: .infinity)
                             .frame(height: 240)
                         
-                        VStack(spacing: 10) {
-                            heroCard(track: library.tracks[1], large: false)
-                                .frame(height: 115)
-                            heroCard(track: library.tracks[2], large: false)
-                                .frame(height: 115)
+                        if randomTracks.count >= 2 {
+                            VStack(spacing: 10) {
+                                heroCard(track: randomTracks[0], large: false)
+                                    .frame(height: 115)
+                                heroCard(track: randomTracks[1], large: false)
+                                    .frame(height: 115)
+                            }
+                            .frame(width: 200)
                         }
-                        .frame(width: 200)
                     }
                     .fixedSize(horizontal: false, vertical: true)
                 } else if !library.tracks.isEmpty {
@@ -55,24 +59,45 @@ struct HomeView: View {
                     emptyState
                 }
                 
-                // Your Collection
-                if !library.tracks.isEmpty {
-                    collectionSection
-                }
-                
-                // Recently Added
+                // Recently Added (Prominent section)
                 if !library.tracks.isEmpty {
                     recentSection
                 }
                 
-                Spacer().frame(height: 90)
+                // Random Discoveries
+                if !randomTracks.isEmpty {
+                    randomSection
+                }
+                
+                // Your Collection (Albums)
+                if !albums.isEmpty {
+                    collectionSection
+                }
+                
+                // Audiobooks (Bottom section)
+                if !library.audiobooks.isEmpty {
+                    audiobooksSection
+                }
+                
+                Spacer().frame(height: 100)
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
         }
         .background(t.surface)
-        .onAppear { updateAlbums() }
-        .onChange(of: library.tracks) { _, _ in updateAlbums() }
+        .onAppear {
+            updateAlbums()
+            updateRandomTracks()
+        }
+        .onChange(of: library.tracks) { _, _ in
+            updateAlbums()
+            updateRandomTracks()
+        }
+    }
+    
+    private func updateRandomTracks() {
+        guard !library.tracks.isEmpty else { return }
+        self.randomTracks = Array(library.tracks.shuffled().prefix(12))
     }
     
     private func updateAlbums() {
@@ -97,12 +122,12 @@ struct HomeView: View {
                     .font(.system(size: large ? 20 : 14, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(large ? 2 : 1)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                    .shadow(color: t.primaryDim.opacity(0.4), radius: 25, x: 0, y: 0)
                 Text(track.artist ?? "Unknown")
                     .font(.system(size: large ? 12 : 10, weight: .medium))
                     .foregroundStyle(.white.opacity(0.8))
                     .lineLimit(1)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                    .shadow(color: t.primaryDim.opacity(0.4), radius: 25, x: 0, y: 0)
                 
                 if large {
                     Button { onPlayTrack(track) } label: {
@@ -144,7 +169,7 @@ struct HomeView: View {
                 )
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: large ? 24 : 16, style: .continuous))
         .clipped()
         .contentShape(Rectangle())
         .onTapGesture { onPlayTrack(track) }
@@ -234,8 +259,38 @@ struct HomeView: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(t.onSurface)
             
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 14) {
+                    ForEach(Array(library.tracks.sorted { $0.dateAdded > $1.dateAdded }.prefix(8))) { track in
+                        VStack(alignment: .leading, spacing: 5) {
+                            ArtworkView(path: track.artworkPath, size: 120, cornerRadius: 8)
+                                .onTapGesture { onPlayTrack(track) }
+                            
+                            Text(track.title ?? "Unknown")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(t.onSurface)
+                                .lineLimit(1)
+                            Text(track.artist ?? "Unknown Artist")
+                                .font(.system(size: 10))
+                                .foregroundStyle(t.onSurfaceVariant)
+                                .lineLimit(1)
+                        }
+                        .frame(width: 120)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Random Section
+    private var randomSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Random Discoveries")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(t.onSurface)
+            
             VStack(spacing: 0) {
-                ForEach(Array(library.tracks.sorted { $0.dateAdded > $1.dateAdded }.prefix(6))) { track in
+                ForEach(randomTracks.prefix(6)) { track in
                     HStack(spacing: 12) {
                         ArtworkView(path: track.artworkPath, size: 38, cornerRadius: 5)
                         VStack(alignment: .leading, spacing: 2) {
@@ -262,6 +317,38 @@ struct HomeView: View {
             }
             .background(t.surfaceContainerLow.opacity(0.3))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+    }
+    
+    // MARK: - Audiobooks
+    private var audiobooksSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Audiobooks")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(t.onSurface)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 16) {
+                    ForEach(library.audiobooks.prefix(10)) { book in
+                        VStack(alignment: .leading, spacing: 6) {
+                            ArtworkView(path: book.artworkPath, size: 140, cornerRadius: 10)
+                                .onTapGesture { onPlayAudiobook(book) }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(book.title ?? "Unknown")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(t.onSurface)
+                                    .lineLimit(1)
+                                Text(book.author ?? "Unknown Author")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(t.onSurfaceVariant)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(width: 140)
+                    }
+                }
+            }
         }
     }
     
