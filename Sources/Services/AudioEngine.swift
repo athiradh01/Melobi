@@ -59,6 +59,10 @@ public final class AudioEngine: NSObject {
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     
+    /// History of queue indices played during shuffle, so Previous can retrace.
+    private var shuffleHistory: [Int] = []
+    private var isGoingBack = false
+    
     private override init() {
         super.init()
     }
@@ -125,6 +129,12 @@ public final class AudioEngine: NSObject {
     
     public func next() {
         guard !queue.isEmpty else { return }
+        // Record current position in shuffle history before moving forward
+        if isShuffleOn && !isGoingBack {
+            shuffleHistory.append(currentQueueIndex)
+            if shuffleHistory.count > 200 { shuffleHistory.removeFirst() }
+        }
+        isGoingBack = false
         if isShuffleOn {
             currentQueueIndex = Int.random(in: 0..<queue.count)
         } else {
@@ -138,8 +148,15 @@ public final class AudioEngine: NSObject {
         guard !queue.isEmpty else { return }
         if currentTime > 3 {
             seek(to: 0)
+        } else if isShuffleOn, let lastIndex = shuffleHistory.popLast() {
+            // Go back to the exact song we came from during shuffle
+            isGoingBack = true
+            currentQueueIndex = lastIndex
+            load(track: queue[currentQueueIndex])
+            play()
         } else {
-            currentQueueIndex = max(0, currentQueueIndex - 1)
+            // Normal sequential backwards
+            currentQueueIndex = (currentQueueIndex - 1 + queue.count) % queue.count
             load(track: queue[currentQueueIndex])
             play()
         }
