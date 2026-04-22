@@ -27,6 +27,12 @@ public final class AudioEngine: NSObject {
     public var currentQueueIndex: Int = 0
     public var error: String?
     
+    /// Called when an audiobook's last chapter finishes playing. Receives (audiobook, lastChapterIndex).
+    public var onChapterCompleted: ((Audiobook, Int) -> Void)?
+    
+    /// Called whenever a new track is loaded, with the file path. Use for lyrics auto-load.
+    public var onTrackChanged: ((String) -> Void)?
+    
     // Audiobook chapter support
     public var chapters: [Chapter] = []
     
@@ -86,6 +92,7 @@ public final class AudioEngine: NSObject {
         currentTime = 0
         error = nil
         setupObservers()
+        onTrackChanged?(track.filePath)
     }
     
     public func load(audiobook: Audiobook, resumePosition: Double = 0, chapters: [Chapter] = []) {
@@ -263,8 +270,14 @@ public final class AudioEngine: NSObject {
                 case .all:
                     self.next(wrap: true)
                 case .none:
-                    // In 'none' mode, we play through the queue once then stop
-                    if self.isShuffleOn {
+                    if self.currentAudiobook != nil {
+                        // Audiobook finished — mark last chapter completed
+                        if let lastChapterIdx = self.currentChapterIndex,
+                           let book = self.currentAudiobook {
+                            self.onChapterCompleted?(book, lastChapterIdx)
+                        }
+                        self.isPlaying = false
+                    } else if self.isShuffleOn {
                         self.next(wrap: false)
                     } else if self.currentQueueIndex + 1 < self.queue.count {
                         self.next(wrap: false)

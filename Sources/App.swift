@@ -2,24 +2,54 @@ import SwiftUI
 import AppKit
 import GRDB
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    func applicationDidBecomeActive(_ notification: Notification) {
+        NSApp.keyWindow?.makeKeyAndOrderFront(nil)
+    }
+}
+
 @main
 struct ResonanceApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     private let db: DatabasePool
     
     init() {
-        let fm = FileManager.default
-        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent("Resonance")
-        try? fm.createDirectory(at: appDir, withIntermediateDirectories: true)
-        
+        let appDir = AppDatabase.resolveDataDirectory()
+
         do {
             try AppDatabase.shared.setup(in: appDir)
-            self.db = AppDatabase.shared.dbWriter
+            guard let pool = AppDatabase.shared.dbWriter else {
+                fatalError("Database setup succeeded but dbWriter is nil")
+            }
+            self.db = pool
+            LibraryStore.shared.startObserving(db: pool)
         } catch {
             fatalError("Failed to initialize database: \(error)")
         }
+
+        setupEngineCallbacks()
+    }
+    
+    private func setupEngineCallbacks() {
+        let engine = AudioEngine.shared
         
-        LibraryStore.shared.startObserving(db: AppDatabase.shared.dbWriter)
+        engine.onTrackChanged = { filePath in
+            let url = URL(fileURLWithPath: filePath)
+            LyricsState.shared.load(for: url)
+        }
+        
+        engine.onChapterCompleted = { audiobook, chapterIndex in
+            guard let db = AppDatabase.shared.dbWriter else { return }
+            LibraryStore.shared.saveChapterProgress(
+                for: audiobook, chapterIndex: chapterIndex,
+                progressMs: 0, isCompleted: true, db: db
+            )
+        }
     }
     
     var body: some Scene {

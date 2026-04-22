@@ -108,3 +108,31 @@ public struct ResumePosition: Codable, FetchableRecord, MutablePersistableRecord
         id = inserted.rowID
     }
 }
+
+/// Tracks per-chapter playback progress for audiobooks.
+public struct ChapterProgress: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
+    public var id: Int64?
+    /// The audiobook this chapter belongs to
+    public var audiobookId: Int64
+    /// The chapter index within the audiobook
+    public var chapterIndex: Int
+    /// How far into the chapter (in ms from chapter start) the user has listened
+    public var progressMs: Int64
+    /// Whether the chapter has been fully listened to
+    public var isCompleted: Bool
+    /// Last time this record was updated
+    public var lastUpdatedAt: Date
+    
+    public init(id: Int64? = nil, audiobookId: Int64, chapterIndex: Int, progressMs: Int64 = 0, isCompleted: Bool = false, lastUpdatedAt: Date = Date()) {
+        self.id = id
+        self.audiobookId = audiobookId
+        self.chapterIndex = chapterIndex
+        self.progressMs = progressMs
+        self.isCompleted = isCompleted
+        self.lastUpdatedAt = lastUpdatedAt
+    }
+    
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}

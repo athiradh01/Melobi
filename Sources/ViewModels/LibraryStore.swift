@@ -26,6 +26,9 @@ public final class LibraryStore {
     private init() {}
     
     public func startObserving(db: DatabasePool) {
+        // Purge tracks/audiobooks whose files no longer exist on disk
+        purgeStaleEntries(db: db)
+        
         trackObservation = ValueObservation.tracking { db in
             try Track.fetchAll(db)
         }
@@ -93,7 +96,7 @@ public final class LibraryStore {
         isScanning = true
         scanProgress = "Rescanning chapters…"
         Task.detached(priority: .background) {
-            let url = URL(fileURLWithPath: audiobook.filePath)
+            let url = URL(fileURLWithPath: audiobook.filePath).standardizedFileURL
             let meta = await MetadataExtractor.shared.extract(from: url)
             let chaptersToWrite = meta.chapters
             if let abId = audiobook.id {
@@ -135,37 +138,151 @@ public final class LibraryStore {
         guard now.timeIntervalSince(lastResumeWrite) >= 5 else { return }
         lastResumeWrite = now
         guard let abId = audiobook.id else { return }
-        _ = try? db.write { conn in
-            var pos = ResumePosition(audiobookId: abId, positionMs: positionMs, lastPlayedAt: Date())
-            try pos.save(conn)
+        do {
+            try db.write { conn in
+                var pos = ResumePosition(audiobookId: abId, positionMs: positionMs, lastPlayedAt: Date())
+                try pos.save(conn)
+            }
+        } catch {
+            print("[LibraryStore] Failed to save resume position: \(error)")
         }
     }
     
     public func deleteTrack(_ track: Track, db: DatabasePool) {
         guard track.id != nil else { return }
-        _ = try? db.write { conn in
-            try track.delete(conn)
+        do {
+            _ = try db.write { conn in
+                try track.delete(conn)
+            }
+        } catch {
+            print("[LibraryStore] Failed to delete track: \(error)")
         }
     }
     
     public func deleteTracks(_ tracks: [Track], db: DatabasePool) {
         let ids = tracks.compactMap { $0.id }
         guard !ids.isEmpty else { return }
-        try? db.write { conn in
-            for track in tracks {
-                try track.delete(conn)
+        do {
+            try db.write { conn in
+                for track in tracks {
+                    try track.delete(conn)
+                }
             }
+        } catch {
+            print("[LibraryStore] Failed to delete tracks: \(error)")
         }
     }
     
     public func deleteAudiobook(_ audiobook: Audiobook, db: DatabasePool) {
         guard let id = audiobook.id else { return }
-        try? db.write { conn in
-            // Delete chapters first
-            try Chapter.filter(Column("audiobookId") == id).deleteAll(conn)
-            // Delete resume position
-            try ResumePosition.filter(Column("audiobookId") == id).deleteAll(conn)
-            try audiobook.delete(conn)
+        do {
+            try db.write { conn in
+                try Chapter.filter(Column("audiobookId") == id).deleteAll(conn)
+                try ResumePosition.filter(Column("audiobookId") == id).deleteAll(conn)
+                try ChapterProgress.filter(Column("audiobookId") == id).deleteAll(conn)
+                try audiobook.delete(conn)
+            }
+        } catch {
+            print("[LibraryStore] Failed to delete audiobook: \(error)")
+        }
+    }
+    
+    // MARK: - Chapter Progress
+    
+    /// Load all chapter progress records for an audiobook, keyed by chapter index.
+    public func chapterProgressMap(for audiobook: Audiobook, db: DatabasePool) -> [Int: ChapterProgress] {
+        guard let abId = audiobook.id else { return [:] }
+        let rows = (try? db.read { conn in
+            try ChapterProgress.filter(Column("audiobookId") == abId).fetchAll(conn)
+        }) ?? []
+        var map: [Int: ChapterProgress] = [:]
+        for row in rows {
+            map[row.chapterIndex] = row
+        }
+        return map
+    }
+    
+    /// Save progress for a specific chapter. Throttled to at most once per 3 seconds per chapter.
+    private var lastChapterProgressWrite: Date = .distantPast
+    
+    public func saveChapterProgress(for audiobook: Audiobook, chapterIndex: Int, progressMs: Int64, isCompleted: Bool, db: DatabasePool) {
+        // Throttle writes — at most once every 3 seconds (unless marking completed)
+        let now = Date()
+        if !isCompleted && now.timeIntervalSince(lastChapterProgressWrite) < 3 { return }
+        lastChapterProgressWrite = now
+        
+        guard let abId = audiobook.id else { return }
+        do {
+            try db.write { conn in
+                if var existing = try ChapterProgress
+                    .filter(Column("audiobookId") == abId && Column("chapterIndex") == chapterIndex)
+                    .fetchOne(conn) {
+                    existing.progressMs = progressMs
+                    existing.isCompleted = isCompleted
+                    existing.lastUpdatedAt = Date()
+                    try existing.update(conn)
+                } else {
+                    var cp = ChapterProgress(
+                        audiobookId: abId,
+                        chapterIndex: chapterIndex,
+                        progressMs: progressMs,
+                        isCompleted: isCompleted
+                    )
+                    try cp.insert(conn)
+                }
+            }
+        } catch {
+            print("[LibraryStore] Failed to save chapter progress: \(error)")
+        }
+    }
+    
+    /// Get the saved progress (in ms from chapter start) for a specific chapter. Returns 0 if none saved.
+    public func chapterResumeMs(for audiobook: Audiobook, chapterIndex: Int, db: DatabasePool) -> Int64 {
+        guard let abId = audiobook.id else { return 0 }
+        let cp = try? db.read { conn in
+            try ChapterProgress
+                .filter(Column("audiobookId") == abId && Column("chapterIndex") == chapterIndex)
+                .fetchOne(conn)
+        }
+        guard let cp, !cp.isCompleted else { return 0 }
+        return cp.progressMs
+    }
+    
+    /// Remove all tracks and audiobooks whose files no longer exist on disk.
+    private func purgeStaleEntries(db: DatabasePool) {
+        let fm = FileManager.default
+        do {
+            try db.write { conn in
+                let allTracks = try Track.fetchAll(conn)
+                var purgedCount = 0
+                for track in allTracks {
+                    if !fm.fileExists(atPath: track.filePath) {
+                        try track.delete(conn)
+                        purgedCount += 1
+                    }
+                }
+                if purgedCount > 0 {
+                    print("[LibraryStore] Purged \(purgedCount) tracks with missing files.")
+                }
+                
+                let allBooks = try Audiobook.fetchAll(conn)
+                var purgedBooks = 0
+                for book in allBooks {
+                    if !fm.fileExists(atPath: book.filePath) {
+                        if let id = book.id {
+                            try Chapter.filter(Column("audiobookId") == id).deleteAll(conn)
+                            try ResumePosition.filter(Column("audiobookId") == id).deleteAll(conn)
+                        }
+                        try book.delete(conn)
+                        purgedBooks += 1
+                    }
+                }
+                if purgedBooks > 0 {
+                    print("[LibraryStore] Purged \(purgedBooks) audiobooks with missing files.")
+                }
+            }
+        } catch {
+            print("[LibraryStore] Failed to purge stale entries: \(error)")
         }
     }
 }
