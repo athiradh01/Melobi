@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import GRDB
+import Observation
 
 // MARK: - Sidebar Section
 enum AppSection: String, CaseIterable {

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import Observation
 
 @MainActor
 @Observable
@@ -20,7 +21,9 @@ public final class AudioEngine: NSObject {
     }
     public var isShuffleOn = false
     public var repeatMode: RepeatMode = .none
-    public var queue: [Track] = []
+    public var queue: [Track] = [] {
+        didSet { shuffleHistory = [] }
+    }
     public var currentQueueIndex: Int = 0
     public var error: String?
     
@@ -127,7 +130,7 @@ public final class AudioEngine: NSObject {
         currentTime = t
     }
     
-    public func next() {
+    public func next(wrap: Bool = true) {
         guard !queue.isEmpty else { return }
         // Record current position in shuffle history before moving forward
         if isShuffleOn && !isGoingBack {
@@ -135,13 +138,31 @@ public final class AudioEngine: NSObject {
             if shuffleHistory.count > 200 { shuffleHistory.removeFirst() }
         }
         isGoingBack = false
+        
+        var nextIndex = currentQueueIndex
         if isShuffleOn {
-            currentQueueIndex = Int.random(in: 0..<queue.count)
+            nextIndex = Int.random(in: 0..<queue.count)
         } else {
-            currentQueueIndex = (currentQueueIndex + 1) % queue.count
+            if currentQueueIndex + 1 < queue.count {
+                nextIndex = currentQueueIndex + 1
+            } else if wrap {
+                nextIndex = 0
+            } else {
+                // End of queue and wrap is disabled - just stop
+                isPlaying = false
+                return
+            }
         }
+        
+        currentQueueIndex = nextIndex
         load(track: queue[currentQueueIndex])
         play()
+    }
+    
+    public func clearQueue() {
+        queue = []
+        currentQueueIndex = 0
+        shuffleHistory = []
     }
     
     public func previous() {
@@ -240,9 +261,16 @@ public final class AudioEngine: NSObject {
                     self.seek(to: 0)
                     self.play()
                 case .all:
-                    self.next()
+                    self.next(wrap: true)
                 case .none:
-                    self.isPlaying = false
+                    // In 'none' mode, we play through the queue once then stop
+                    if self.isShuffleOn {
+                        self.next(wrap: false)
+                    } else if self.currentQueueIndex + 1 < self.queue.count {
+                        self.next(wrap: false)
+                    } else {
+                        self.isPlaying = false
+                    }
                 }
             }
         }

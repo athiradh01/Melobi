@@ -47,13 +47,21 @@ public enum LRCParser {
     
     /// Load and parse .lrc file if found alongside the audio file. Returns empty array if not found.
     public static func load(for audioURL: URL) -> [LRCLine] {
-        let lrcURL = audioURL.deletingPathExtension().appendingPathExtension("lrc")
+        let base = audioURL.deletingPathExtension()
+        let lrcURLs = [
+            base.appendingPathExtension("lrc"),
+            base.appendingPathExtension("LRC")
+        ]
         
-        // Try UTF-8 first, then fallback encodings
         let encodings: [String.Encoding] = [.utf8, .isoLatin1, .ascii, .japaneseEUC, .shiftJIS]
-        for encoding in encodings {
-            if let content = try? String(contentsOf: lrcURL, encoding: encoding) {
-                return parse(content)
+        
+        for url in lrcURLs {
+            if FileManager.default.fileExists(atPath: url.path) {
+                for encoding in encodings {
+                    if let content = try? String(contentsOf: url, encoding: encoding) {
+                        return parse(content)
+                    }
+                }
             }
         }
         return []
@@ -62,10 +70,9 @@ public enum LRCParser {
     /// Find the active line index given a current playback time.
     public static func activeIndex(in lines: [LRCLine], at time: TimeInterval) -> Int? {
         guard !lines.isEmpty else { return nil }
-        var result = 0
-        for (i, line) in lines.enumerated() {
-            if line.timestamp <= time { result = i }
-        }
-        return result
+        
+        // Find the index of the line whose timestamp is the largest value <= current time
+        let index = lines.lastIndex(where: { $0.timestamp <= time })
+        return index
     }
 }

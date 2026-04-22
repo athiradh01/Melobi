@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import Observation
 
 @MainActor
 @Observable
@@ -100,7 +101,7 @@ public final class LibraryStore {
                     try await db.write { conn in
                         try Chapter.filter(Column("audiobookId") == abId).deleteAll(conn)
                         for chapter in chaptersToWrite {
-                            let ch = Chapter(
+                            var ch = Chapter(
                                 audiobookId: abId,
                                 title: chapter.title,
                                 startTimeMs: chapter.startTimeMs,
@@ -135,7 +136,8 @@ public final class LibraryStore {
         lastResumeWrite = now
         guard let abId = audiobook.id else { return }
         _ = try? db.write { conn in
-            try ResumePosition(audiobookId: abId, positionMs: positionMs, lastPlayedAt: Date()).save(conn)
+            var pos = ResumePosition(audiobookId: abId, positionMs: positionMs, lastPlayedAt: Date())
+            try pos.save(conn)
         }
     }
     

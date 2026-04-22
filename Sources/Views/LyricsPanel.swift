@@ -25,7 +25,7 @@ struct LyricsPanel: View {
             if lyrics.hasLyrics {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 20) {
                             Spacer().frame(height: 20)
                             
                             ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { index, line in

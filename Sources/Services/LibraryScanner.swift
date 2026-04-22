@@ -102,7 +102,7 @@ public actor LibraryScanner {
         let toWrite = batch
         batch.removeAll()
         _ = try? await db.write { conn in
-            for track in toWrite {
+            for var track in toWrite {
                 try track.save(conn)
             }
         }
@@ -113,11 +113,12 @@ public actor LibraryScanner {
         batch.removeAll()
         for (audiobook, chapters) in toWrite {
             _ = try? await db.write { conn in
-                try audiobook.save(conn)
-                guard let bookId = audiobook.id else { return }
+                var saved = audiobook
+                try saved.save(conn)
+                guard let bookId = saved.id else { return }
                 try Chapter.filter(Column("audiobookId") == bookId).deleteAll(conn)
                 for chapter in chapters {
-                    let ch = Chapter(
+                    var ch = Chapter(
                         audiobookId: bookId,
                         title: chapter.title,
                         startTimeMs: chapter.startTimeMs,

@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-public struct LibraryFolder: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct LibraryFolder: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var path: String
     public var lastScannedAt: Date?
@@ -12,12 +12,12 @@ public struct LibraryFolder: Codable, FetchableRecord, PersistableRecord, Identi
         self.lastScannedAt = lastScannedAt
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct Track: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct Track: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var filePath: String
     public var title: String?
@@ -40,12 +40,12 @@ public struct Track: Codable, FetchableRecord, PersistableRecord, Identifiable, 
         self.dateAdded = dateAdded
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct Audiobook: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct Audiobook: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var filePath: String
     public var title: String?
@@ -66,12 +66,12 @@ public struct Audiobook: Codable, FetchableRecord, PersistableRecord, Identifiab
         self.dateAdded = dateAdded
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct Chapter: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct Chapter: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var audiobookId: Int64
     public var title: String?
@@ -86,12 +86,12 @@ public struct Chapter: Codable, FetchableRecord, PersistableRecord, Identifiable
         self.index = index
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct ResumePosition: Codable, FetchableRecord, PersistableRecord, Equatable {
+public struct ResumePosition: Codable, FetchableRecord, MutablePersistableRecord, Equatable {
     public var id: Int64?
     public var audiobookId: Int64
     public var positionMs: Int64
@@ -104,7 +104,7 @@ public struct ResumePosition: Codable, FetchableRecord, PersistableRecord, Equat
         self.lastPlayedAt = lastPlayedAt
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
