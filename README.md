@@ -1,4 +1,4 @@
-# Resonance (Offline Audio Player)
+# Melobi (Offline Audio Player)
 
 **Resonance** is a modern, high-performance, and entirely offline audio and audiobook player built natively for macOS using Swift and SwiftUI. Designed for power users and library localists, the app avoids cloud-syncing and subscriptions, giving you complete control over your local `.mp3`, `.flac`, `.m4a`, and `.m4b` files through a beautiful, keyboard-navigable interface.
 
