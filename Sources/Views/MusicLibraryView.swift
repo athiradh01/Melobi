@@ -313,11 +313,8 @@ struct MusicLibraryView: View {
         panel.message = "Select audio files or folders"
         guard panel.runModal() == .OK else { return }
         
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent("Resonance")
-        let artworkDir = appDir.appendingPathComponent("Artwork")
-        try? FileManager.default.createDirectory(at: artworkDir, withIntermediateDirectories: true)
-        
+        guard let artworkDir = AppDatabase.shared.artworkDirectory else { return }
+
         for url in panel.urls {
             library.importFolder(url: url, db: db, artworkDir: artworkDir, as: .music)
         }
@@ -404,11 +401,6 @@ struct VinylView: View {
                                 .foregroundStyle(.white.opacity(0.3))
                         )
                 }
-                
-                // Spindle
-                Circle()
-                    .fill(Color(r: 12, g: 12, b: 15))
-                    .frame(width: 8, height: 8)
             }
             .frame(width: size, height: size)
             .rotationEffect(.degrees(rotation))

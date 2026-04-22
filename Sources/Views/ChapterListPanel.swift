@@ -10,6 +10,8 @@ struct ChapterListPanel: View {
     let db: DatabasePool
     let chapters: [Chapter]
 
+    @State private var progressMap: [Int: ChapterProgress] = [:]
+
     private var t: Theme { Theme(scheme: colorScheme) }
 
     private var activeChapterIndex: Int? {
@@ -42,6 +44,19 @@ struct ChapterListPanel: View {
                     .foregroundStyle(t.onSurface)
                     .tracking(-0.3)
                 Spacer()
+                
+                // Show completed count
+                let completedCount = progressMap.values.filter { $0.isCompleted }.count
+                if completedCount > 0 {
+                    Text("\(completedCount)/\(chapters.count) Done")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+                
                 Text("\(chapters.count) Sections")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(t.onSurfaceVariant)
@@ -70,6 +85,7 @@ struct ChapterListPanel: View {
                                 let isActive = index == activeChapterIndex
                                 let isPast = index < (activeChapterIndex ?? 0)
                                 let duration = chapterDuration(index: index)
+                                let progress = progressMap[index]
 
                                 ChapterRow(
                                     chapter: chapter,
@@ -77,9 +93,17 @@ struct ChapterListPanel: View {
                                     isActive: isActive,
                                     isPast: isPast,
                                     duration: duration,
+                                    chapterProgress: progress,
                                     onTap: {
-                                        let seconds = Double(chapter.startTimeMs) / 1000.0
-                                        engine.seek(to: seconds)
+                                        // Resume from saved position if available
+                                        let chapterStartSec = Double(chapter.startTimeMs) / 1000.0
+                                        if let book = engine.currentAudiobook {
+                                            let resumeMs = library.chapterResumeMs(for: book, chapterIndex: index, db: db)
+                                            let resumeSec = Double(resumeMs) / 1000.0
+                                            engine.seek(to: chapterStartSec + resumeSec)
+                                        } else {
+                                            engine.seek(to: chapterStartSec)
+                                        }
                                     }
                                 )
                                 .id(index)
@@ -98,10 +122,20 @@ struct ChapterListPanel: View {
                 }
             }
         }
+        .onAppear { refreshProgress() }
+        .onChange(of: engine.currentTime) { _, _ in
+            // Refresh progress map periodically (every ~5 seconds is fine, the map itself is cheap)
+            refreshProgress()
+        }
+    }
+    
+    private func refreshProgress() {
+        guard let book = engine.currentAudiobook else { return }
+        progressMap = library.chapterProgressMap(for: book, db: db)
     }
 }
 
-// MARK: - Chapter Row matched to Tailwind
+// MARK: - Chapter Row
 private struct ChapterRow: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(AudioEngine.self) var engine
@@ -110,11 +144,22 @@ private struct ChapterRow: View {
     let isActive: Bool
     let isPast: Bool
     let duration: Double
+    let chapterProgress: ChapterProgress?
     let onTap: () -> Void
 
     @State private var isHovered = false
 
     private var t: Theme { Theme(scheme: colorScheme) }
+    
+    private var isCompleted: Bool {
+        chapterProgress?.isCompleted == true
+    }
+    
+    /// Progress fraction 0…1 for in-progress chapters
+    private var progressFraction: Double {
+        guard let cp = chapterProgress, !cp.isCompleted, duration > 0 else { return 0 }
+        return min(1, Double(cp.progressMs) / 1000.0 / duration)
+    }
 
     var body: some View {
         Button(action: onTap) {
@@ -125,6 +170,10 @@ private struct ChapterRow: View {
                         Image(systemName: "play.circle.fill")
                             .font(.system(size: 24))
                             .foregroundStyle(t.primary)
+                    } else if isCompleted {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(.green)
                     } else {
                         Text(String(format: "%02d", index + 1))
                             .font(.system(size: 14, weight: .bold))
@@ -134,15 +183,32 @@ private struct ChapterRow: View {
                 }
 
                 // Title + Status
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(chapter.title ?? "Chapter \(index + 1)")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(t.onSurface)
+                        .foregroundStyle(isCompleted ? t.onSurfaceVariant : t.onSurface)
                         .lineLimit(1)
                     
-                    Text(statusLabel)
-                        .font(.system(size: 12))
-                        .foregroundStyle(t.onSurfaceVariant.opacity(isActive ? 0.8 : 0.6))
+                    HStack(spacing: 8) {
+                        Text(statusLabel)
+                            .font(.system(size: 12))
+                            .foregroundStyle(statusColor)
+                        
+                        // Show progress bar for in-progress chapters
+                        if !isCompleted && !isActive && progressFraction > 0 {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(t.outlineVariant.opacity(0.2))
+                                        .frame(height: 3)
+                                    Capsule()
+                                        .fill(t.primary.opacity(0.7))
+                                        .frame(width: geo.size.width * progressFraction, height: 3)
+                                }
+                            }
+                            .frame(width: 60, height: 3)
+                        }
+                    }
                 }
 
                 Spacer()
@@ -168,12 +234,19 @@ private struct ChapterRow: View {
     }
 
     private var statusLabel: String {
-        if isActive { return "Current Chapter" }
-        if isPast {
-            // Can calculate actually percent completion if we wanted, but let's say "Completed" for simplicity or simulate it.
-            return "Completed"
+        if isActive { return "Now Playing" }
+        if isCompleted { return "Completed ✓" }
+        if isPast { return "Completed ✓" }
+        if progressFraction > 0 {
+            return "\(Int(progressFraction * 100))% listened"
         }
-        return "Locked"
+        return "Not started"
+    }
+    
+    private var statusColor: Color {
+        if isActive { return t.primary }
+        if isCompleted || isPast { return .green }
+        if progressFraction > 0 { return t.primary.opacity(0.7) }
+        return t.onSurfaceVariant.opacity(0.5)
     }
 }
-

@@ -31,8 +31,10 @@ public actor MetadataExtractor {
         do {
             let duration = try await asset.load(.duration)
             meta.durationMs = Int64(duration.seconds * 1000)
-        } catch {}
-        
+        } catch {
+            print("[MetadataExtractor] Failed to load duration: \(error)")
+        }
+
         do {
             let commonMeta = try await asset.load(.commonMetadata)
             for item in commonMeta {
@@ -52,7 +54,9 @@ public actor MetadataExtractor {
                     }
                 }
             }
-        } catch {}
+        } catch {
+            print("[MetadataExtractor] Failed to load common metadata: \(error)")
+        }
         
         if meta.title == nil { meta.title = url.deletingPathExtension().lastPathComponent }
         
@@ -75,7 +79,9 @@ public actor MetadataExtractor {
                         index: index
                     ))
                 }
-            } catch {}
+            } catch {
+                print("[MetadataExtractor] Failed to load chapter metadata: \(error)")
+            }
         }
         
         // If there are absolutely no chapters embedded, create a single "Full Audiobook" overarching chapter stub.

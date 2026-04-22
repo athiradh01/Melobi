@@ -101,10 +101,19 @@ public actor LibraryScanner {
     private func flushMusic(_ batch: inout [Track], db: DatabasePool) async {
         let toWrite = batch
         batch.removeAll()
-        _ = try? await db.write { conn in
-            for track in toWrite {
-                try track.save(conn)
+        do {
+            try await db.write { conn in
+                for var track in toWrite {
+                    if let existing = try Track.filter(Column("filePath") == track.filePath).fetchOne(conn) {
+                        track.id = existing.id
+                        try track.update(conn)
+                    } else {
+                        try track.insert(conn)
+                    }
+                }
             }
+        } catch {
+            print("[LibraryScanner] Failed to flush music batch: \(error)")
         }
     }
     
@@ -112,19 +121,29 @@ public actor LibraryScanner {
         let toWrite = batch
         batch.removeAll()
         for (audiobook, chapters) in toWrite {
-            _ = try? await db.write { conn in
-                try audiobook.save(conn)
-                guard let bookId = audiobook.id else { return }
-                try Chapter.filter(Column("audiobookId") == bookId).deleteAll(conn)
-                for chapter in chapters {
-                    let ch = Chapter(
-                        audiobookId: bookId,
-                        title: chapter.title,
-                        startTimeMs: chapter.startTimeMs,
-                        index: chapter.index
-                    )
-                    try ch.insert(conn)
+            do {
+                try await db.write { conn in
+                    var saved = audiobook
+                    if let existing = try Audiobook.filter(Column("filePath") == saved.filePath).fetchOne(conn) {
+                        saved.id = existing.id
+                        try saved.update(conn)
+                    } else {
+                        try saved.insert(conn)
+                    }
+                    guard let bookId = saved.id else { return }
+                    try Chapter.filter(Column("audiobookId") == bookId).deleteAll(conn)
+                    for chapter in chapters {
+                        var ch = Chapter(
+                            audiobookId: bookId,
+                            title: chapter.title,
+                            startTimeMs: chapter.startTimeMs,
+                            index: chapter.index
+                        )
+                        try ch.insert(conn)
+                    }
                 }
+            } catch {
+                print("[LibraryScanner] Failed to flush audiobook: \(error)")
             }
         }
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import GRDB
+import Observation
 
 // MARK: - Full Screen Now Playing View
 struct NowPlayingView: View {
@@ -155,6 +156,7 @@ struct AudiobookPlayerBar: View {
     
     @State private var isDragging = false
     @State private var dragValue: Double = 0
+    @State private var isCurrentChapterCompleted = false
     
     private var t: Theme { Theme(scheme: colorScheme) }
     
@@ -210,7 +212,7 @@ struct AudiobookPlayerBar: View {
             
             HStack {
                 // Left side details
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     ArtworkView(path: engine.currentAudiobook?.artworkPath, size: 52, cornerRadius: 8)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("NOW PLAYING")
@@ -222,8 +224,26 @@ struct AudiobookPlayerBar: View {
                             .foregroundStyle(t.onSurface)
                             .lineLimit(1)
                     }
+                    
+                    // Mark as Completed button
+                    Button {
+                        markCurrentChapterCompleted()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: isCurrentChapterCompleted ? "checkmark.circle.fill" : "checkmark.circle")
+                                .font(.system(size: 12, weight: .bold))
+                            Text(isCurrentChapterCompleted ? "Done" : "Mark Done")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundStyle(isCurrentChapterCompleted ? .green : t.onSurfaceVariant)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(isCurrentChapterCompleted ? Color.green.opacity(0.12) : t.surfaceContainerHighest)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .frame(width: 300, alignment: .leading)
+                .frame(width: 360, alignment: .leading)
                 
                 Spacer()
                 
@@ -326,5 +346,28 @@ struct AudiobookPlayerBar: View {
                 .frame(height: 1),
             alignment: .top
         )
+        .onAppear { refreshCompletionState() }
+        .onChange(of: engine.currentChapterIndex) { _, _ in refreshCompletionState() }
+    }
+    
+    private func refreshCompletionState() {
+        guard let book = engine.currentAudiobook, let chIdx = engine.currentChapterIndex else {
+            isCurrentChapterCompleted = false
+            return
+        }
+        guard let db = AppDatabase.shared.dbWriter else { return }
+        let map = LibraryStore.shared.chapterProgressMap(for: book, db: db)
+        isCurrentChapterCompleted = map[chIdx]?.isCompleted == true
+    }
+
+    private func markCurrentChapterCompleted() {
+        guard let book = engine.currentAudiobook, let chIdx = engine.currentChapterIndex else { return }
+        guard let db = AppDatabase.shared.dbWriter else { return }
+        let newState = !isCurrentChapterCompleted
+        LibraryStore.shared.saveChapterProgress(
+            for: book, chapterIndex: chIdx,
+            progressMs: 0, isCompleted: newState, db: db
+        )
+        isCurrentChapterCompleted = newState
     }
 }

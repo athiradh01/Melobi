@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import GRDB
 
 // MARK: - Now Playing Bar (Velvet Echo Glass Footer — Optimized)
 struct NowPlayingBar: View {
@@ -11,6 +12,7 @@ struct NowPlayingBar: View {
     @State private var dragValue: Double = 0
     @State private var lastLyricsUpdate: TimeInterval = -1
     @State private var artworkAccent: Color = .clear
+    @State private var lastChapterIndex: Int? = nil
     
     private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme) }
     private var currentArtworkPath: String? {
@@ -29,20 +31,42 @@ struct NowPlayingBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 MarqueeText(text: trackTitle, font: .system(size: 13, weight: .bold))
                     .foregroundStyle(t.onSurface)
-                Text(trackArtist)
-                    .font(.system(size: 11))
-                    .foregroundStyle(t.onSurfaceVariant)
-                    .lineLimit(1)
+                if let err = engine.error {
+                    Text(err)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.red)
+                        .lineLimit(2)
+                } else {
+                    Text(trackArtist)
+                        .font(.system(size: 11))
+                        .foregroundStyle(t.onSurfaceVariant)
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: 160, alignment: .leading)
         }
+    }
+    
+    /// Whether the engine is currently playing an audiobook with chapters
+    private var isAudiobookWithChapters: Bool {
+        engine.currentAudiobook != nil && !engine.chapters.isEmpty
+    }
+    
+    /// The displayed current time — chapter-relative for audiobooks, absolute for music
+    private var displayCurrentTime: Double {
+        isAudiobookWithChapters ? engine.currentChapterTime : engine.currentTime
+    }
+    
+    /// The displayed duration — chapter duration for audiobooks, full track for music
+    private var displayDuration: Double {
+        isAudiobookWithChapters ? engine.currentChapterDuration : engine.duration
     }
     
     var body: some View {
         VStack(spacing: 10) {
             // Progress bar
             HStack(spacing: 10) {
-                Text(formatTime(isDragging ? dragValue : engine.currentTime))
+                Text(formatTime(isDragging ? dragValue : displayCurrentTime))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(t.onSurfaceVariant)
                     .monospacedDigit()
@@ -54,8 +78,8 @@ struct NowPlayingBar: View {
                             .fill(t.secondaryContainer)
                             .frame(height: 4)
                         
-                        let progress = engine.duration > 0
-                            ? (isDragging ? dragValue : engine.currentTime) / engine.duration
+                        let progress = displayDuration > 0
+                            ? (isDragging ? dragValue : displayCurrentTime) / displayDuration
                             : 0
                         Capsule()
                             .fill(t.primary)
@@ -68,17 +92,23 @@ struct NowPlayingBar: View {
                             .onChanged { value in
                                 isDragging = true
                                 let ratio = max(0, min(1, value.location.x / geo.size.width))
-                                dragValue = ratio * engine.duration
+                                dragValue = ratio * displayDuration
                             }
                             .onEnded { _ in
-                                engine.seek(to: dragValue)
+                                if isAudiobookWithChapters {
+                                    // Convert chapter-relative drag to absolute seek position
+                                    let chapterStart = engine.currentChapter.map { Double($0.startTimeMs) / 1000.0 } ?? 0
+                                    engine.seek(to: chapterStart + dragValue)
+                                } else {
+                                    engine.seek(to: dragValue)
+                                }
                                 isDragging = false
                             }
                     )
                 }
                 .frame(height: 16)
                 
-                Text(formatTime(engine.duration))
+                Text(formatTime(displayDuration))
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(t.onSurfaceVariant)
                     .monospacedDigit()
@@ -245,6 +275,27 @@ struct NowPlayingBar: View {
             if abs(newTime - lastLyricsUpdate) >= 0.4 {
                 lastLyricsUpdate = newTime
                 lyrics.update(currentTime: newTime)
+            }
+            
+            // Auto-save chapter progress for audiobooks
+            if let book = engine.currentAudiobook, let chIdx = engine.currentChapterIndex,
+               let db = AppDatabase.shared.dbWriter {
+                let chapterTimeMs = Int64(engine.currentChapterTime * 1000)
+                
+                // Detect chapter transition — mark previous chapter as completed
+                if let prevIdx = lastChapterIndex, prevIdx != chIdx {
+                    LibraryStore.shared.saveChapterProgress(
+                        for: book, chapterIndex: prevIdx,
+                        progressMs: 0, isCompleted: true, db: db
+                    )
+                }
+                lastChapterIndex = chIdx
+                
+                // Save current chapter progress (throttled inside LibraryStore)
+                LibraryStore.shared.saveChapterProgress(
+                    for: book, chapterIndex: chIdx,
+                    progressMs: chapterTimeMs, isCompleted: false, db: db
+                )
             }
         }
     }

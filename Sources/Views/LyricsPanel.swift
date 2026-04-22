@@ -25,35 +25,25 @@ struct LyricsPanel: View {
             if lyrics.hasLyrics {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 22) {
                             Spacer().frame(height: 20)
                             
                             ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { index, line in
-                                let isActive = index == lyrics.activeIndex
-                                let isPast = index < (lyrics.activeIndex ?? 0)
-                                
-                                Text(line.text.isEmpty ? "♪" : line.text)
-                                    .font(.system(
-                                        size: isActive ? 24 : 16,
-                                        weight: isActive ? .bold : .semibold
-                                    ))
-                                    .foregroundStyle(
-                                        isActive
-                                        ? t.primary
-                                        : t.onSurface.opacity(isPast ? 0.2 : 0.25)
-                                    )
-                                    .padding(.horizontal, 24)
-                                    .id(index)
+                                LyricLineView(
+                                    text: line.text.isEmpty ? "♪" : line.text,
+                                    isActive: index == lyrics.activeIndex,
+                                    isPast: index < (lyrics.activeIndex ?? 0)
+                                )
+                                .id(index)
                             }
                             
                             Spacer().frame(height: 120)
                         }
                     }
                     .onChange(of: lyrics.activeIndex) { _, idx in
-                        if let idx {
-                            withAnimation(.easeInOut(duration: 0.4)) {
-                                proxy.scrollTo(idx, anchor: .center)
-                            }
+                        guard let idx else { return }
+                        withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                            proxy.scrollTo(idx, anchor: .center)
                         }
                     }
                 }
@@ -75,5 +65,33 @@ struct LyricsPanel: View {
             }
         }
         .background(t.surfaceContainerLow.opacity(0.5))
+    }
+}
+
+// MARK: - Single lyric line with smooth animated transitions
+private struct LyricLineView: View {
+    let text: String
+    let isActive: Bool
+    let isPast: Bool
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var t: Theme { Theme(scheme: colorScheme) }
+    
+    var body: some View {
+        Text(text)
+            .font(.system(
+                size: isActive ? 24 : 16,
+                weight: isActive ? .bold : .semibold
+            ))
+            .foregroundStyle(
+                isActive
+                    ? t.primary
+                    : t.onSurface.opacity(isPast ? 0.18 : 0.22)
+            )
+            .padding(.horizontal, 24)
+            .scaleEffect(isActive ? 1.0 : 0.97, anchor: .leading)
+            .blur(radius: isActive ? 0 : (isPast ? 0.5 : 0))
+            .animation(.spring(response: 0.45, dampingFraction: 0.72), value: isActive)
+            .animation(.spring(response: 0.45, dampingFraction: 0.72), value: isPast)
     }
 }

@@ -2,26 +2,60 @@ import SwiftUI
 import AppKit
 import GRDB
 
-// MARK: - Home View (FIXED — no overlapping, images as backgrounds)
+// MARK: - Home View
 struct HomeView: View {
     @Environment(LibraryStore.self) var library
     @Environment(AudioEngine.self) var engine
     @Environment(\.colorScheme) var colorScheme
-    
+
     var onNavigateToLibrary: () -> Void
     var onPlayTrack: (Track) -> Void
     var onPlayAudiobook: (Audiobook) -> Void
     let db: DatabasePool
-    
+
     @State private var albums: [AlbumInfo] = []
     @State private var randomTracks: [Track] = []
-    
+
     private var t: Theme { Theme(scheme: colorScheme) }
-    
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 28) {
-                // Header
+                
+                // MARK: Search Bar
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundStyle(t.outline)
+                    
+                    SearchField(
+                        text: Binding(
+                            get: { library.searchQuery },
+                            set: { library.searchQuery = $0 }
+                        ),
+                        placeholder: "Search your library...",
+                        onCancel: { library.searchQuery = "" },
+                        focusOnAppear: false
+                    )
+                    .frame(height: 24)
+                    
+                    if !library.searchQuery.isEmpty {
+                        Button {
+                            library.searchQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(t.outline)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(t.surfaceContainerLow)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.top, 8)
+
+                // MARK: Header
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Made For You")
                         .font(.system(size: 26, weight: .heavy))
@@ -31,54 +65,10 @@ struct HomeView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(t.onSurfaceVariant)
                 }
-                .padding(.top, 8)
-                
-                // Hero bento — Using Recently Added and Random
-                if let mostRecent = library.tracks.sorted(by: { $0.dateAdded > $1.dateAdded }).first {
-                    HStack(spacing: 10) {
-                        heroCard(track: mostRecent, large: true)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 240)
-                        
-                        if randomTracks.count >= 2 {
-                            VStack(spacing: 10) {
-                                heroCard(track: randomTracks[0], large: false)
-                                    .frame(height: 115)
-                                heroCard(track: randomTracks[1], large: false)
-                                    .frame(height: 115)
-                            }
-                            .frame(width: 200)
-                        }
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
-                } else if !library.tracks.isEmpty {
-                    heroCard(track: library.tracks[0], large: true)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 240)
-                } else {
-                    emptyState
-                }
-                
-                // Recently Added (Prominent section)
-                if !library.tracks.isEmpty {
-                    recentSection
-                }
-                
-                // Random Discoveries
-                if !randomTracks.isEmpty {
-                    randomSection
-                }
-                
-                // Your Collection (Albums)
-                if !albums.isEmpty {
-                    collectionSection
-                }
-                
-                // Audiobooks (Bottom section)
-                if !library.audiobooks.isEmpty {
-                    audiobooksSection
-                }
-                
+
+                // MARK: Content sections
+                normalContent
+
                 Spacer().frame(height: 100)
             }
             .padding(.horizontal, 24)
@@ -89,19 +79,72 @@ struct HomeView: View {
             updateAlbums()
             updateRandomTracks()
         }
-        .onChange(of: library.tracks) { _, _ in
+        .onChange(of: library.filteredTracks) { _, _ in
             updateAlbums()
             updateRandomTracks()
         }
     }
-    
-    private func updateRandomTracks() {
-        guard !library.tracks.isEmpty else { return }
-        self.randomTracks = Array(library.tracks.shuffled().prefix(12))
+
+    // MARK: - Normal home content
+    @ViewBuilder
+    private var normalContent: some View {
+        // Hero bento — Using Recently Added and Random
+        if let mostRecent = library.filteredTracks.sorted(by: { $0.dateAdded > $1.dateAdded }).first {
+            HStack(spacing: 10) {
+                heroCard(track: mostRecent, large: true)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 240)
+
+                if randomTracks.count >= 2 {
+                    let r0 = randomTracks[0], r1 = randomTracks[1]
+                    VStack(spacing: 10) {
+                        heroCard(track: r0, large: false)
+                            .frame(height: 115)
+                        heroCard(track: r1, large: false)
+                            .frame(height: 115)
+                    }
+                    .frame(width: 200)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } else if let firstTrack = library.filteredTracks.first {
+            heroCard(track: firstTrack, large: true)
+                .frame(maxWidth: .infinity)
+                .frame(height: 240)
+        } else {
+            emptyState
+        }
+
+        // Recently Added
+        if !library.filteredTracks.isEmpty {
+            recentSection
+        }
+
+        // Random Discoveries
+        if !randomTracks.isEmpty {
+            randomSection
+        }
+
+        // Your Collection (Albums)
+        if !albums.isEmpty {
+            collectionSection
+        }
+
+        // Audiobooks
+        if !library.filteredAudiobooks.isEmpty {
+            audiobooksSection
+        }
     }
-    
+
+    private func updateRandomTracks() {
+        guard !library.filteredTracks.isEmpty else { 
+            self.randomTracks = []
+            return 
+        }
+        self.randomTracks = Array(library.filteredTracks.shuffled().prefix(12))
+    }
+
     private func updateAlbums() {
-        // Run in background to avoid blocking main thread if library is large
         Task {
             let result = buildAlbums()
             await MainActor.run {
@@ -109,14 +152,11 @@ struct HomeView: View {
             }
         }
     }
-    
-    // MARK: - Hero Card (image as BACKGROUND, not ZStack content)
+
+    // MARK: - Hero Card
     private func heroCard(track: Track, large: Bool) -> some View {
-        // The key fix: use Color.clear for sizing, image goes in .background()
         VStack(alignment: .leading) {
             Spacer()
-            
-            // Text content at bottom
             VStack(alignment: .leading, spacing: 2) {
                 Text(large ? (track.album ?? track.title ?? "Your Library") : (track.title ?? "Track"))
                     .font(.system(size: large ? 20 : 14, weight: .bold))
@@ -128,7 +168,7 @@ struct HomeView: View {
                     .foregroundStyle(.white.opacity(0.8))
                     .lineLimit(1)
                     .shadow(color: t.primaryDim.opacity(0.4), radius: 25, x: 0, y: 0)
-                
+
                 if large {
                     Button { onPlayTrack(track) } label: {
                         HStack(spacing: 4) {
@@ -149,14 +189,12 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .background(
-            // Gradient overlay on top of image
             LinearGradient(
                 colors: [.clear, .black.opacity(0.6)],
                 startPoint: .center, endPoint: .bottom
             )
         )
         .background(
-            // Image as background — this is the key fix for overlapping
             AsyncImageLoader(path: track.artworkPath) { img in
                 Image(nsImage: img)
                     .resizable()
@@ -174,8 +212,8 @@ struct HomeView: View {
         .contentShape(Rectangle())
         .onTapGesture { onPlayTrack(track) }
     }
-    
-    // MARK: - Empty state
+
+    // MARK: - Empty State
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "music.note.house")
@@ -190,7 +228,7 @@ struct HomeView: View {
         .background(t.surfaceContainerLow)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
-    
+
     // MARK: - Collection
     private var collectionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -206,12 +244,11 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
             }
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
                     ForEach(albums, id: \.name) { album in
                         VStack(alignment: .leading, spacing: 5) {
-                            // Album art — use background approach
                             Color.clear
                                 .frame(width: 120, height: 120)
                                 .background(
@@ -231,7 +268,7 @@ struct HomeView: View {
                                 )
                                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 .clipped()
-                            
+
                             Text(album.name)
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(t.onSurface)
@@ -251,21 +288,21 @@ struct HomeView: View {
             }
         }
     }
-    
+
     // MARK: - Recently Added
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Recently Added")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(t.onSurface)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
-                    ForEach(Array(library.tracks.sorted { $0.dateAdded > $1.dateAdded }.prefix(8))) { track in
+                    ForEach(Array(library.filteredTracks.sorted { $0.dateAdded > $1.dateAdded }.prefix(8))) { track in
                         VStack(alignment: .leading, spacing: 5) {
                             ArtworkView(path: track.artworkPath, size: 120, cornerRadius: 8)
                                 .onTapGesture { onPlayTrack(track) }
-                            
+
                             Text(track.title ?? "Unknown")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(t.onSurface)
@@ -281,14 +318,14 @@ struct HomeView: View {
             }
         }
     }
-    
+
     // MARK: - Random Section
     private var randomSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Random Discoveries")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(t.onSurface)
-            
+
             VStack(spacing: 0) {
                 ForEach(randomTracks.prefix(6)) { track in
                     HStack(spacing: 12) {
@@ -319,21 +356,21 @@ struct HomeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }
-    
+
     // MARK: - Audiobooks
     private var audiobooksSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Audiobooks")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(t.onSurface)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
-                    ForEach(library.audiobooks.prefix(10)) { book in
+                    ForEach(library.filteredAudiobooks.prefix(10)) { book in
                         VStack(alignment: .leading, spacing: 6) {
                             ArtworkView(path: book.artworkPath, size: 140, cornerRadius: 10)
                                 .onTapGesture { onPlayAudiobook(book) }
-                            
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(book.title ?? "Unknown")
                                     .font(.system(size: 12, weight: .bold))
@@ -351,7 +388,7 @@ struct HomeView: View {
             }
         }
     }
-    
+
     // MARK: - Album data builder
     private struct AlbumInfo: Hashable {
         let name: String
@@ -359,14 +396,14 @@ struct HomeView: View {
         let artwork: String?
         let count: Int
         let firstTrack: Track?
-        
+
         func hash(into hasher: inout Hasher) { hasher.combine(name) }
         static func == (lhs: AlbumInfo, rhs: AlbumInfo) -> Bool { lhs.name == rhs.name }
     }
-    
+
     private func buildAlbums() -> [AlbumInfo] {
         var dict: [String: (artist: String, artwork: String?, count: Int, first: Track)] = [:]
-        for track in library.tracks.prefix(200) { // limit scan for performance
+        for track in library.filteredTracks.prefix(200) {
             let album = track.album ?? "Unknown"
             if let e = dict[album] {
                 dict[album] = (e.artist, e.artwork, e.count + 1, e.first)

@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-public struct LibraryFolder: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct LibraryFolder: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var path: String
     public var lastScannedAt: Date?
@@ -12,12 +12,12 @@ public struct LibraryFolder: Codable, FetchableRecord, PersistableRecord, Identi
         self.lastScannedAt = lastScannedAt
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct Track: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct Track: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var filePath: String
     public var title: String?
@@ -40,12 +40,12 @@ public struct Track: Codable, FetchableRecord, PersistableRecord, Identifiable, 
         self.dateAdded = dateAdded
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct Audiobook: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct Audiobook: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var filePath: String
     public var title: String?
@@ -66,12 +66,12 @@ public struct Audiobook: Codable, FetchableRecord, PersistableRecord, Identifiab
         self.dateAdded = dateAdded
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct Chapter: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+public struct Chapter: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
     public var id: Int64?
     public var audiobookId: Int64
     public var title: String?
@@ -86,12 +86,12 @@ public struct Chapter: Codable, FetchableRecord, PersistableRecord, Identifiable
         self.index = index
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
-public struct ResumePosition: Codable, FetchableRecord, PersistableRecord, Equatable {
+public struct ResumePosition: Codable, FetchableRecord, MutablePersistableRecord, Equatable {
     public var id: Int64?
     public var audiobookId: Int64
     public var positionMs: Int64
@@ -104,7 +104,35 @@ public struct ResumePosition: Codable, FetchableRecord, PersistableRecord, Equat
         self.lastPlayedAt = lastPlayedAt
     }
     
-    mutating public func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}
+
+/// Tracks per-chapter playback progress for audiobooks.
+public struct ChapterProgress: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
+    public var id: Int64?
+    /// The audiobook this chapter belongs to
+    public var audiobookId: Int64
+    /// The chapter index within the audiobook
+    public var chapterIndex: Int
+    /// How far into the chapter (in ms from chapter start) the user has listened
+    public var progressMs: Int64
+    /// Whether the chapter has been fully listened to
+    public var isCompleted: Bool
+    /// Last time this record was updated
+    public var lastUpdatedAt: Date
+    
+    public init(id: Int64? = nil, audiobookId: Int64, chapterIndex: Int, progressMs: Int64 = 0, isCompleted: Bool = false, lastUpdatedAt: Date = Date()) {
+        self.id = id
+        self.audiobookId = audiobookId
+        self.chapterIndex = chapterIndex
+        self.progressMs = progressMs
+        self.isCompleted = isCompleted
+        self.lastUpdatedAt = lastUpdatedAt
+    }
+    
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }

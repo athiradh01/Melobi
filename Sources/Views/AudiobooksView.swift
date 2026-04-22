@@ -279,11 +279,10 @@ struct AudiobooksView: View {
     
     private func rescanChapters(_ book: Audiobook) {
         isRescanning = true
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let artworkDir = appSupport.appendingPathComponent("Resonance/Artwork")
+        guard let artworkDir = AppDatabase.shared.artworkDirectory else { return }
         library.rescanChapters(for: book, db: db, artworkDir: artworkDir)
     }
-    
+
     private func addAudiobook() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -291,11 +290,8 @@ struct AudiobooksView: View {
         panel.allowsMultipleSelection = true
         panel.message = "Select audiobook files or folders"
         guard panel.runModal() == .OK else { return }
-        
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupport.appendingPathComponent("Resonance")
-        let artworkDir = appDir.appendingPathComponent("Artwork")
-        try? FileManager.default.createDirectory(at: artworkDir, withIntermediateDirectories: true)
+
+        guard let artworkDir = AppDatabase.shared.artworkDirectory else { return }
         
         for url in panel.urls {
             library.importFolder(url: url, db: db, artworkDir: artworkDir, as: .audiobook)

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import Observation
 
 @MainActor
 @Observable
@@ -20,9 +21,17 @@ public final class AudioEngine: NSObject {
     }
     public var isShuffleOn = false
     public var repeatMode: RepeatMode = .none
-    public var queue: [Track] = []
+    public var queue: [Track] = [] {
+        didSet { shuffleHistory = [] }
+    }
     public var currentQueueIndex: Int = 0
     public var error: String?
+    
+    /// Called when an audiobook's last chapter finishes playing. Receives (audiobook, lastChapterIndex).
+    public var onChapterCompleted: ((Audiobook, Int) -> Void)?
+    
+    /// Called whenever a new track is loaded, with the file path. Use for lyrics auto-load.
+    public var onTrackChanged: ((String) -> Void)?
     
     // Audiobook chapter support
     public var chapters: [Chapter] = []
@@ -83,6 +92,7 @@ public final class AudioEngine: NSObject {
         currentTime = 0
         error = nil
         setupObservers()
+        onTrackChanged?(track.filePath)
     }
     
     public func load(audiobook: Audiobook, resumePosition: Double = 0, chapters: [Chapter] = []) {
@@ -127,7 +137,7 @@ public final class AudioEngine: NSObject {
         currentTime = t
     }
     
-    public func next() {
+    public func next(wrap: Bool = true) {
         guard !queue.isEmpty else { return }
         // Record current position in shuffle history before moving forward
         if isShuffleOn && !isGoingBack {
@@ -135,13 +145,31 @@ public final class AudioEngine: NSObject {
             if shuffleHistory.count > 200 { shuffleHistory.removeFirst() }
         }
         isGoingBack = false
+        
+        var nextIndex = currentQueueIndex
         if isShuffleOn {
-            currentQueueIndex = Int.random(in: 0..<queue.count)
+            nextIndex = Int.random(in: 0..<queue.count)
         } else {
-            currentQueueIndex = (currentQueueIndex + 1) % queue.count
+            if currentQueueIndex + 1 < queue.count {
+                nextIndex = currentQueueIndex + 1
+            } else if wrap {
+                nextIndex = 0
+            } else {
+                // End of queue and wrap is disabled - just stop
+                isPlaying = false
+                return
+            }
         }
+        
+        currentQueueIndex = nextIndex
         load(track: queue[currentQueueIndex])
         play()
+    }
+    
+    public func clearQueue() {
+        queue = []
+        currentQueueIndex = 0
+        shuffleHistory = []
     }
     
     public func previous() {
@@ -240,9 +268,22 @@ public final class AudioEngine: NSObject {
                     self.seek(to: 0)
                     self.play()
                 case .all:
-                    self.next()
+                    self.next(wrap: true)
                 case .none:
-                    self.isPlaying = false
+                    if self.currentAudiobook != nil {
+                        // Audiobook finished — mark last chapter completed
+                        if let lastChapterIdx = self.currentChapterIndex,
+                           let book = self.currentAudiobook {
+                            self.onChapterCompleted?(book, lastChapterIdx)
+                        }
+                        self.isPlaying = false
+                    } else if self.isShuffleOn {
+                        self.next(wrap: false)
+                    } else if self.currentQueueIndex + 1 < self.queue.count {
+                        self.next(wrap: false)
+                    } else {
+                        self.isPlaying = false
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import GRDB
+import Observation
 
 // MARK: - Sidebar Section
 enum AppSection: String, CaseIterable {
@@ -87,6 +88,7 @@ struct ContentView: View {
     @State private var themeManager = ThemeManager.shared
     @State private var sortOption: SortOption = .dateAdded
     @State private var sortAscending = false
+    @State private var isSearchActive = false
     @Environment(\.colorScheme) var systemScheme
     
     let db: DatabasePool
@@ -157,32 +159,70 @@ struct ContentView: View {
             .padding(.top, 28)
             .padding(.bottom, 24)
             
-            // Search
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12))
-                    .foregroundStyle(t.outline)
-                TextField("Search…", text: Binding(
-                    get: { library.searchQuery },
-                    set: { library.searchQuery = $0 }
-                ))
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                if !library.searchQuery.isEmpty {
-                    Button { library.searchQuery = "" } label: {
+            // Search — disabled by default, activates on click
+            if isSearchActive {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 12))
+                        .foregroundStyle(t.primary)
+                    
+                    SearchField(
+                        text: Binding(
+                            get: { library.searchQuery },
+                            set: { library.searchQuery = $0 }
+                        ),
+                        placeholder: "Search...",
+                        onCancel: { deactivateSearch() },
+                        focusOnAppear: true
+                    )
+                    .frame(height: 20)
+                    
+                    Button {
+                        deactivateSearch()
+                    } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 11))
+                            .font(.system(size: 13))
                             .foregroundStyle(t.outline)
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(t.surfaceContainerLow)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(t.primary.opacity(0.5), lineWidth: 1.5)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
+                .transition(.opacity)
+            } else {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isSearchActive = true
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12))
+                            .foregroundStyle(t.outline)
+                        Text("Search...")
+                            .font(.system(size: 13))
+                            .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .background(t.surfaceContainerLow)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
+                .transition(.opacity)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(t.surfaceContainerLow)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
             
             // Nav items
             VStack(spacing: 2) {
@@ -213,7 +253,10 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, 12)
-            
+            .onChange(of: section) { _, _ in
+                deactivateSearch()
+            }
+
             Spacer()
             
             // Theme toggle & palette selector
@@ -271,6 +314,14 @@ struct ContentView: View {
         .background(t.sidebarBg)
     }
     
+    // MARK: - Search helpers
+    private func deactivateSearch() {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            library.searchQuery = ""
+            isSearchActive = false
+        }
+    }
+    
     // MARK: - Main Content (no animation)
     @ViewBuilder
     private var mainContent: some View {
@@ -282,6 +333,7 @@ struct ContentView: View {
                 HomeView(
                     onNavigateToLibrary: { section = .music },
                     onPlayTrack: { track in
+                        deactivateSearch()
                         let sorted = sortedTracks
                         engine.queue = sorted
                         engine.currentQueueIndex = sorted.firstIndex(where: { $0.id == track.id }) ?? 0
@@ -290,6 +342,7 @@ struct ContentView: View {
                         engine.play()
                     },
                     onPlayAudiobook: { book in
+                        deactivateSearch()
                         let chapters = library.chapters(for: book, db: db)
                         let resumePos = library.resumePosition(for: book, db: db)
                         engine.load(audiobook: book, resumePosition: resumePos, chapters: chapters)
