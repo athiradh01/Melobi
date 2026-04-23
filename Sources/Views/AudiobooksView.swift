@@ -20,6 +20,77 @@ struct AudiobooksView: View {
         HStack(spacing: 0) {
             // Book list
             VStack(spacing: 0) {
+                // MARK: Search Bar
+                if library.isSearchActive {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(t.primary)
+                        
+                        SearchField(
+                            text: Binding(
+                                get: { library.searchQuery },
+                                set: { library.searchQuery = $0 }
+                            ),
+                            placeholder: "Search audiobooks...",
+                            onCancel: {
+                                withAnimation {
+                                    library.searchQuery = ""
+                                    library.isSearchActive = false
+                                }
+                            },
+                            focusOnAppear: true
+                        )
+                        .frame(height: 22)
+                        
+                        Button {
+                            withAnimation {
+                                library.searchQuery = ""
+                                library.isSearchActive = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(t.outline)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(t.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(t.primary.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                } else {
+                    Button {
+                        withAnimation { library.isSearchActive = true }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 13))
+                                .foregroundStyle(t.outline)
+                            Text("Search audiobooks...")
+                                .font(.system(size: 12))
+                                .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .background(t.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                }
+
                 HStack {
                     Text("\(library.filteredAudiobooks.count) Audiobooks")
                         .font(.system(size: 11, weight: .bold))
@@ -126,6 +197,7 @@ struct AudiobooksView: View {
                                 
                                 HStack(spacing: 12) {
                                     Button {
+                                        withAnimation { library.isSearchActive = false }
                                         engine.load(audiobook: book, resumePosition: resumeSeconds, chapters: chapters)
                                         engine.play()
                                         withAnimation(.easeInOut(duration: 0.3)) {
@@ -167,6 +239,7 @@ struct AudiobooksView: View {
                             LazyVStack(spacing: 0) {
                                 ForEach(chapters) { chapter in
                                     Button {
+                                        withAnimation { library.isSearchActive = false }
                                         engine.load(audiobook: book, resumePosition: Double(chapter.startTimeMs) / 1000, chapters: chapters)
                                         engine.play()
                                         withAnimation(.easeInOut(duration: 0.3)) {

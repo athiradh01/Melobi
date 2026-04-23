@@ -16,14 +16,39 @@ struct NowPlayingView: View {
     private var isAudiobook: Bool { engine.currentAudiobook != nil }
     
     var body: some View {
-        Group {
-            if isAudiobook {
-                audiobookLayout
-            } else {
-                musicLayout
+        ZStack(alignment: .topLeading) {
+            Group {
+                if isAudiobook {
+                    audiobookLayout
+                } else {
+                    musicLayout
+                }
             }
+            .background(t.surface)
+            
+            // Back Button
+            Button {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    engine.isNowPlayingViewActive = false
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("Back")
+                        .font(.system(size: 12, weight: .bold))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .foregroundStyle(t.onSurfaceVariant)
+                .background(t.surfaceContainerLow)
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 24)
+            .padding(.leading, 32)
         }
-        .background(t.surface)
     }
     
     // MARK: - Audiobook Layout
@@ -249,6 +274,30 @@ struct AudiobookPlayerBar: View {
                 
                 // Playback Controls
                 HStack(spacing: 32) {
+                    if !engine.chapters.isEmpty {
+                        Menu {
+                            ForEach(engine.chapters, id: \.id) { chapter in
+                                Button {
+                                    engine.seek(to: Double(chapter.startTimeMs) / 1000.0)
+                                } label: {
+                                    HStack {
+                                        Text(chapter.title ?? "Chapter \(chapter.index + 1)")
+                                        if engine.currentChapterIndex == chapter.index {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "list.bullet.indent")
+                                .font(.system(size: 20))
+                                .foregroundStyle(t.onSurfaceVariant)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    }
+
                     Button { engine.previousChapter() } label: {
                         Image(systemName: "backward.end")
                             .font(.system(size: 24))
@@ -290,19 +339,6 @@ struct AudiobookPlayerBar: View {
                 
                 // Right side utils
                 HStack(spacing: 24) {
-                    // Volume Control
-                    HStack(spacing: 8) {
-                        Image(systemName: "speaker.wave.2")
-                            .font(.system(size: 14))
-                            .foregroundStyle(t.onSurfaceVariant)
-                        Slider(
-                            value: Binding(get: { Double(engine.volume) }, set: { engine.volume = Float($0) }),
-                            in: 0...1
-                        )
-                        .frame(width: 80)
-                        .tint(t.primary)
-                    }
-                    
                     // Speed Control
                     Menu {
                         ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { rate in
@@ -319,18 +355,6 @@ struct AudiobookPlayerBar: View {
                             .clipShape(Capsule())
                     }
                     .menuStyle(.borderlessButton).fixedSize()
-                    
-                    // Close Audiobook Player button
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            engine.isNowPlayingViewActive = false
-                        }
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(t.onSurfaceVariant)
-                    }
-                    .buttonStyle(.plain)
                 }
                 .frame(width: 300, alignment: .trailing)
             }
@@ -348,6 +372,14 @@ struct AudiobookPlayerBar: View {
         )
         .onAppear { refreshCompletionState() }
         .onChange(of: engine.currentChapterIndex) { _, _ in refreshCompletionState() }
+        .onChange(of: engine.currentChapterTime) { _, time in
+            if engine.currentChapterDuration > 0 && time >= engine.currentChapterDuration - 2.0 && !isCurrentChapterCompleted {
+                // Auto mark completed if within 2 seconds of the end
+                if !isCurrentChapterCompleted {
+                    markCurrentChapterCompleted()
+                }
+            }
+        }
     }
     
     private func refreshCompletionState() {

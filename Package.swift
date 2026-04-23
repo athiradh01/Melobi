@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Resonance",
+    name: "Arisef",
     platforms: [
         .macOS(.v14)
     ],
@@ -11,7 +11,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "Resonance",
+            name: "Arisef",
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift")
             ],

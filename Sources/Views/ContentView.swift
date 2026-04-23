@@ -159,71 +159,6 @@ struct ContentView: View {
             .padding(.top, 28)
             .padding(.bottom, 24)
             
-            // Search — disabled by default, activates on click
-            if isSearchActive {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 12))
-                        .foregroundStyle(t.primary)
-                    
-                    SearchField(
-                        text: Binding(
-                            get: { library.searchQuery },
-                            set: { library.searchQuery = $0 }
-                        ),
-                        placeholder: "Search...",
-                        onCancel: { deactivateSearch() },
-                        focusOnAppear: true
-                    )
-                    .frame(height: 20)
-                    
-                    Button {
-                        deactivateSearch()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(t.outline)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(t.surfaceContainerLow)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(t.primary.opacity(0.5), lineWidth: 1.5)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                .transition(.opacity)
-            } else {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isSearchActive = true
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 12))
-                            .foregroundStyle(t.outline)
-                        Text("Search...")
-                            .font(.system(size: 13))
-                            .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .background(t.surfaceContainerLow)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                .transition(.opacity)
-            }
-            
             // Nav items
             VStack(spacing: 2) {
                 ForEach(AppSection.allCases, id: \.self) { sec in
@@ -254,7 +189,8 @@ struct ContentView: View {
             }
             .padding(.horizontal, 12)
             .onChange(of: section) { _, _ in
-                deactivateSearch()
+                // Clear search when switching sections to keep context clean
+                library.searchQuery = ""
             }
 
             Spacer()
@@ -334,6 +270,7 @@ struct ContentView: View {
                     onNavigateToLibrary: { section = .music },
                     onPlayTrack: { track in
                         deactivateSearch()
+                        library.isSearchActive = false
                         let sorted = sortedTracks
                         engine.queue = sorted
                         engine.currentQueueIndex = sorted.firstIndex(where: { $0.id == track.id }) ?? 0
@@ -343,6 +280,7 @@ struct ContentView: View {
                     },
                     onPlayAudiobook: { book in
                         deactivateSearch()
+                        library.isSearchActive = false
                         let chapters = library.chapters(for: book, db: db)
                         let resumePos = library.resumePosition(for: book, db: db)
                         engine.load(audiobook: book, resumePosition: resumePos, chapters: chapters)

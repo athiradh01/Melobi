@@ -124,12 +124,36 @@ struct NowPlayingBar: View {
                 
                 // Center: Playback controls
                 HStack(spacing: 20) {
-                    Button { engine.isShuffleOn.toggle() } label: {
-                        Image(systemName: "shuffle")
-                            .font(.system(size: 13))
-                            .foregroundStyle(engine.isShuffleOn ? t.primary : t.onSurfaceVariant.opacity(0.6))
+                    if isAudiobookWithChapters {
+                        Menu {
+                            ForEach(engine.chapters, id: \.id) { chapter in
+                                Button {
+                                    engine.seek(to: Double(chapter.startTimeMs) / 1000.0)
+                                } label: {
+                                    HStack {
+                                        Text(chapter.title ?? "Chapter \(chapter.index + 1)")
+                                        if engine.currentChapterIndex == chapter.index {
+                                            Spacer()
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "list.bullet.indent")
+                                .font(.system(size: 14))
+                                .foregroundStyle(t.onSurfaceVariant)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    } else if engine.currentAudiobook == nil {
+                        Button { engine.isShuffleOn.toggle() } label: {
+                            Image(systemName: "shuffle")
+                                .font(.system(size: 13))
+                                .foregroundStyle(engine.isShuffleOn ? t.primary : t.onSurfaceVariant.opacity(0.6))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                     
                     Button { engine.previous() } label: {
                         Image(systemName: "backward.fill")
@@ -158,7 +182,7 @@ struct NowPlayingBar: View {
                             .foregroundStyle(t.onSurface)
                     }
                     .buttonStyle(.plain)
-                    
+
                     Button {
                         switch engine.repeatMode {
                         case .none: engine.repeatMode = .all
@@ -204,16 +228,7 @@ struct NowPlayingBar: View {
                         .menuStyle(.borderlessButton).fixedSize()
                     }
                     
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(t.onSurfaceVariant)
-                    Slider(
-                        value: Binding(get: { Double(engine.volume) }, set: { engine.volume = Float($0) }),
-                        in: 0...1
-                    )
-                    .frame(width: 80)
-                    .tint(t.primary)
-                    
+
                     // Toggle for Now Playing (Lyrics/Vinyl) vs List
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -228,7 +243,7 @@ struct NowPlayingBar: View {
                                 .background(engine.isNowPlayingViewActive ? t.surfaceContainerHigh : Color.clear)
                                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                             
-                            Image(systemName: "music.note.list")
+                            Image(systemName: engine.currentAudiobook != nil ? "book.closed" : "music.note.list")
                                 .font(.system(size: 11))
                                 .foregroundStyle(!engine.isNowPlayingViewActive ? t.primary : t.onSurfaceVariant)
                                 .frame(width: 28, height: 24)

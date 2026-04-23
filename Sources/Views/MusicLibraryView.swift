@@ -36,6 +36,77 @@ struct MusicLibraryView: View {
         HStack(spacing: 0) {
             // Track list
             VStack(spacing: 0) {
+                // MARK: Search Bar
+                if library.isSearchActive {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(t.primary)
+                        
+                        SearchField(
+                            text: Binding(
+                                get: { library.searchQuery },
+                                set: { library.searchQuery = $0 }
+                            ),
+                            placeholder: "Search tracks, artists, albums...",
+                            onCancel: {
+                                withAnimation {
+                                    library.searchQuery = ""
+                                    library.isSearchActive = false
+                                }
+                            },
+                            focusOnAppear: true
+                        )
+                        .frame(height: 22)
+                        
+                        Button {
+                            withAnimation {
+                                library.searchQuery = ""
+                                library.isSearchActive = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(t.outline)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(t.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(t.primary.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                } else {
+                    Button {
+                        withAnimation { library.isSearchActive = true }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 13))
+                                .foregroundStyle(t.outline)
+                            Text("Search tracks, artists, albums...")
+                                .font(.system(size: 12))
+                                .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .background(t.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                }
+
                 // Header with sort + add
                 headerBar
                 
@@ -85,6 +156,7 @@ struct MusicLibraryView: View {
                             } else {
                                 // Normal mode — tap to play
                                 Button {
+                                    withAnimation { library.isSearchActive = false }
                                     engine.queue = tracks
                                     engine.currentQueueIndex = tracks.firstIndex(where: { $0.id == track.id }) ?? 0
                                     engine.load(track: track)

@@ -12,6 +12,7 @@ public final class LibraryStore {
     public var searchQuery = "" {
         didSet { rebuildFiltered() }
     }
+    public var isSearchActive = false
     public var isScanning = false
     public var scanProgress = ""
     
@@ -126,10 +127,42 @@ public final class LibraryStore {
     
     public func resumePosition(for audiobook: Audiobook, db: DatabasePool) -> Double {
         guard let abId = audiobook.id else { return 0 }
+        
+        // Find the first chapter that is not completed
+        let chaptersList = chapters(for: audiobook, db: db).sorted(by: { $0.index < $1.index })
+        let progressMap = chapterProgressMap(for: audiobook, db: db)
+        
+        var nextChapterStartTime: Double? = nil
+        for chapter in chaptersList {
+            if progressMap[chapter.index]?.isCompleted != true {
+                nextChapterStartTime = Double(chapter.startTimeMs) / 1000.0
+                break
+            }
+        }
+        
         let pos = try? db.read { conn in
             try ResumePosition.filter(Column("audiobookId") == abId).fetchOne(conn)
         }
-        return Double(pos?.positionMs ?? 0) / 1000.0
+        let rawResume = Double(pos?.positionMs ?? 0) / 1000.0
+        
+        // Decide base resume point
+        var targetResume = rawResume
+        if let nextStart = nextChapterStartTime, rawResume < nextStart {
+            targetResume = nextStart
+        }
+        
+        // Find the start time of the chapter for the targetResume
+        let currentChapterStart = chaptersList
+            .last(where: { Double($0.startTimeMs) / 1000.0 <= targetResume })
+            .map { Double($0.startTimeMs) / 1000.0 } ?? 0.0
+        
+        // If more than 15 seconds into the chapter, rewind 10 seconds.
+        // Otherwise, just start from the beginning of the chapter.
+        if targetResume - currentChapterStart > 15.0 {
+            return targetResume - 10.0
+        } else {
+            return currentChapterStart
+        }
     }
     
     // Throttled write — at most once every 5 seconds
@@ -140,8 +173,14 @@ public final class LibraryStore {
         guard let abId = audiobook.id else { return }
         do {
             try db.write { conn in
-                var pos = ResumePosition(audiobookId: abId, positionMs: positionMs, lastPlayedAt: Date())
-                try pos.save(conn)
+                if var existing = try ResumePosition.filter(Column("audiobookId") == abId).fetchOne(conn) {
+                    existing.positionMs = positionMs
+                    existing.lastPlayedAt = Date()
+                    try existing.update(conn)
+                } else {
+                    var pos = ResumePosition(audiobookId: abId, positionMs: positionMs, lastPlayedAt: Date())
+                    try pos.insert(conn)
+                }
             }
         } catch {
             print("[LibraryStore] Failed to save resume position: \(error)")

@@ -23,37 +23,70 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 28) {
                 
                 // MARK: Search Bar
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14))
-                        .foregroundStyle(t.outline)
-                    
-                    SearchField(
-                        text: Binding(
-                            get: { library.searchQuery },
-                            set: { library.searchQuery = $0 }
-                        ),
-                        placeholder: "Search your library...",
-                        onCancel: { library.searchQuery = "" },
-                        focusOnAppear: false
-                    )
-                    .frame(height: 24)
-                    
-                    if !library.searchQuery.isEmpty {
+                if library.isSearchActive {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14))
+                            .foregroundStyle(t.primary)
+                        
+                        SearchField(
+                            text: Binding(
+                                get: { library.searchQuery },
+                                set: { library.searchQuery = $0 }
+                            ),
+                            placeholder: "Search your library...",
+                            onCancel: {
+                                withAnimation {
+                                    library.searchQuery = ""
+                                    library.isSearchActive = false
+                                }
+                            },
+                            focusOnAppear: true
+                        )
+                        .frame(height: 24)
+                        
                         Button {
-                            library.searchQuery = ""
+                            withAnimation {
+                                library.searchQuery = ""
+                                library.isSearchActive = false
+                            }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(t.outline)
                         }
                         .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(t.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(t.primary.opacity(0.3), lineWidth: 1)
+                    )
+                    .padding(.top, 8)
+                } else {
+                    Button {
+                        withAnimation { library.isSearchActive = true }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 14))
+                                .foregroundStyle(t.outline)
+                            Text("Search your library...")
+                                .font(.system(size: 13))
+                                .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .background(t.surfaceContainerLow)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.top, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(t.surfaceContainerLow)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .padding(.top, 8)
 
                 // MARK: Header
                 VStack(alignment: .leading, spacing: 4) {
@@ -61,13 +94,19 @@ struct HomeView: View {
                         .font(.system(size: 26, weight: .heavy))
                         .foregroundStyle(t.onSurface)
                         .tracking(-0.5)
-                    Text("Your personal collection, always offline.")
+                    Text(library.searchQuery.isEmpty ? "Your personal collection, always offline." : "Found \(library.filteredTracks.count) tracks for \"\(library.searchQuery)\"")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(t.onSurfaceVariant)
                 }
 
                 // MARK: Content sections
-                normalContent
+                if library.tracks.isEmpty {
+                    emptyState
+                } else if library.filteredTracks.isEmpty && !library.searchQuery.isEmpty {
+                    noResultsState
+                } else {
+                    normalContent
+                }
 
                 Spacer().frame(height: 100)
             }
@@ -83,6 +122,28 @@ struct HomeView: View {
             updateAlbums()
             updateRandomTracks()
         }
+    }
+
+    // MARK: - No Results State
+    private var noResultsState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 36, weight: .thin))
+                .foregroundStyle(t.outlineVariant.opacity(0.4))
+            Text("No results for \"\(library.searchQuery)\"")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(t.onSurfaceVariant.opacity(0.6))
+            Button {
+                withAnimation { library.searchQuery = "" }
+            } label: {
+                Text("Clear Search")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(t.primary)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 200)
     }
 
     // MARK: - Normal home content

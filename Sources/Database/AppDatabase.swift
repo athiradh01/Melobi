@@ -19,14 +19,14 @@ public final class AppDatabase {
     private init() {}
     
     /// Resolve a writable data directory.
-    /// Tries `~/Library/Application Support/Resonance` first; falls back to
+    /// Tries `~/Library/Application Support/Arisef` first; falls back to
     /// a `Database/` folder next to the running executable.
     public static func resolveDataDirectory() -> URL {
         let fm = FileManager.default
         
         // Attempt 1: Application Support (standard macOS location)
         if let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            let preferred = appSupport.appendingPathComponent("Resonance")
+            let preferred = appSupport.appendingPathComponent("Arisef")
             try? fm.createDirectory(at: preferred, withIntermediateDirectories: true)
             // Verify we can actually write there
             let probe = preferred.appendingPathComponent(".write_test")

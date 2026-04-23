@@ -14,7 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @main
-struct ResonanceApp: App {
+struct ArisefApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     private let db: DatabasePool
     
