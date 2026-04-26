@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import GRDB
+import UniformTypeIdentifiers
 
 // MARK: - Home View
 struct HomeView: View {
@@ -56,14 +57,33 @@ struct HomeView: View {
                 .padding(.top, 8)
 
                 // MARK: Header
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Made For You")
-                        .font(.system(size: 26, weight: .heavy))
-                        .foregroundStyle(t.onSurface)
-                        .tracking(-0.5)
-                    Text("Your personal collection, always offline.")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(t.onSurfaceVariant)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Made For You")
+                            .font(.system(size: 26, weight: .heavy))
+                            .foregroundStyle(t.onSurface)
+                            .tracking(-0.5)
+                        Text("Your personal collection, always offline.")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(t.onSurfaceVariant)
+                    }
+                    Spacer()
+                    Button(action: {
+                        importLyrics()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                            Text("Add Lyrics")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundStyle(t.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(t.primaryContainer.opacity(0.2))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 // MARK: Content sections
@@ -414,5 +434,39 @@ struct HomeView: View {
         return Array(dict.map { AlbumInfo(name: $0.key, artist: $0.value.artist, artwork: $0.value.artwork, count: $0.value.count, firstTrack: $0.value.first) }
             .sorted { $0.count > $1.count }
             .prefix(10))
+    }
+    
+    // MARK: - Lyrics Import
+    private func importLyrics() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        
+        if let lrcType = UTType(filenameExtension: "lrc") {
+            panel.allowedContentTypes = [lrcType]
+        }
+        
+        panel.message = "Select .lrc files to import"
+        
+        panel.begin { response in
+            guard response == .OK, let lyricsDir = AppDatabase.shared.lyricsDirectory else { return }
+            
+            for url in panel.urls {
+                let dest = lyricsDir.appendingPathComponent(url.lastPathComponent)
+                try? FileManager.default.removeItem(at: dest)
+                do {
+                    try FileManager.default.copyItem(at: url, to: dest)
+                } catch {
+                    print("Failed to copy lyric file \(url.lastPathComponent): \(error)")
+                }
+            }
+            
+            // Auto-reload lyrics if the current track just got a lyric
+            if let currentUrlStr = engine.currentTrack?.filePath {
+                let currentUrl = URL(fileURLWithPath: currentUrlStr)
+                LyricsState.shared.load(for: currentUrl)
+            }
+        }
     }
 }

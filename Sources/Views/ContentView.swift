@@ -88,7 +88,6 @@ struct ContentView: View {
     @State private var themeManager = ThemeManager.shared
     @State private var sortOption: SortOption = .dateAdded
     @State private var sortAscending = false
-    @State private var isSearchActive = false
     @Environment(\.colorScheme) var systemScheme
     
     let db: DatabasePool
@@ -159,71 +158,6 @@ struct ContentView: View {
             .padding(.top, 28)
             .padding(.bottom, 24)
             
-            // Search — disabled by default, activates on click
-            if isSearchActive {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 12))
-                        .foregroundStyle(t.primary)
-                    
-                    SearchField(
-                        text: Binding(
-                            get: { library.searchQuery },
-                            set: { library.searchQuery = $0 }
-                        ),
-                        placeholder: "Search...",
-                        onCancel: { deactivateSearch() },
-                        focusOnAppear: true
-                    )
-                    .frame(height: 20)
-                    
-                    Button {
-                        deactivateSearch()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(t.outline)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(t.surfaceContainerLow)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(t.primary.opacity(0.5), lineWidth: 1.5)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                .transition(.opacity)
-            } else {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isSearchActive = true
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 12))
-                            .foregroundStyle(t.outline)
-                        Text("Search...")
-                            .font(.system(size: 13))
-                            .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .background(t.surfaceContainerLow)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-                .transition(.opacity)
-            }
-            
             // Nav items
             VStack(spacing: 2) {
                 ForEach(AppSection.allCases, id: \.self) { sec in
@@ -290,17 +224,13 @@ struct ContentView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 4) {
-                            Text(themeManager.activeLightTheme.rawValue)
-                                .font(.system(size: 11, weight: .semibold))
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 9))
-                        }
-                        .foregroundStyle(t.primary)
-                        .padding(.horizontal, 10)
-                        .frame(height: 32)
-                        .background(t.surfaceContainerHigh.opacity(0.5))
-                        .clipShape(Capsule())
+                        Text(themeManager.activeLightTheme.rawValue)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(t.primary)
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(t.surfaceContainerHigh.opacity(0.5))
+                            .clipShape(Capsule())
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
@@ -318,7 +248,6 @@ struct ContentView: View {
     private func deactivateSearch() {
         withAnimation(.easeInOut(duration: 0.15)) {
             library.searchQuery = ""
-            isSearchActive = false
         }
     }
     

@@ -16,6 +16,14 @@ public final class AppDatabase {
         return art
     }
     
+    /// Convenience: lyrics sub-directory inside the data directory.
+    public var lyricsDirectory: URL? {
+        guard let dir = dataDirectory else { return nil }
+        let lyrics = dir.appendingPathComponent("Lyrics")
+        try? FileManager.default.createDirectory(at: lyrics, withIntermediateDirectories: true)
+        return lyrics
+    }
+    
     private init() {}
     
     /// Resolve a writable data directory.

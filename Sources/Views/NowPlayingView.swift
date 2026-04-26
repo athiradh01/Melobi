@@ -109,6 +109,31 @@ struct NowPlayingView: View {
         HStack(spacing: 0) {
             // Left Column
             VStack(spacing: 32) {
+                HStack {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            engine.isNowPlayingViewActive = false
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Back")
+                                .font(.system(size: 13, weight: .bold))
+                        }
+                        .foregroundStyle(t.onSurfaceVariant)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(t.surfaceContainerHighest.opacity(0.5))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                }
+                .padding(.top, 24)
+                .padding(.leading, 24)
+                
                 Spacer()
                 
                 VinylView(
