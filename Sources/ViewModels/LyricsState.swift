@@ -5,14 +5,20 @@ import Observation
 @Observable
 public final class LyricsState {
     public static let shared = LyricsState()
-    public var lines: [LRCLine] = []
+    public var variants: [LyricVariant] = []
+    public var activeVariantIndex: Int = 0
     public var activeIndex: Int? = nil
+    
+    public var lines: [LRCLine] {
+        guard variants.indices.contains(activeVariantIndex) else { return [] }
+        return variants[activeVariantIndex].lines
+    }
     
     /// The file path of the audio track whose lyrics are currently loaded.
     /// Used to detect when the track changes, even if two tracks share the same title.
     public private(set) var loadedForFilePath: String? = nil
     
-    public var hasLyrics: Bool { !lines.isEmpty }
+    public var hasLyrics: Bool { !variants.isEmpty }
     
     private init() {}
     
@@ -23,7 +29,8 @@ public final class LyricsState {
         // Skip if already loaded for this exact file
         guard path != loadedForFilePath else { return }
         loadedForFilePath = path
-        lines = LRCParser.load(for: url)
+        variants = LRCParser.loadVariants(for: url)
+        activeVariantIndex = 0
         activeIndex = nil
     }
     
@@ -32,7 +39,8 @@ public final class LyricsState {
     }
     
     public func clear() {
-        lines = []
+        variants = []
+        activeVariantIndex = 0
         activeIndex = nil
         loadedForFilePath = nil
     }
