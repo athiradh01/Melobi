@@ -215,32 +215,22 @@ struct NowPlayingBar: View {
                     .tint(t.primary)
                     
                     // Toggle for Now Playing (Lyrics/Vinyl) vs List
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            engine.isNowPlayingViewActive.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: 0) {
+                    if !engine.isNowPlayingViewActive {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                engine.isNowPlayingViewActive.toggle()
+                            }
+                        } label: {
                             Image(systemName: "text.quote")
-                                .font(.system(size: 11))
-                                .foregroundStyle(engine.isNowPlayingViewActive ? t.primary : t.onSurfaceVariant)
-                                .frame(width: 28, height: 24)
-                                .background(engine.isNowPlayingViewActive ? t.surfaceContainerHigh : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                            
-                            Image(systemName: "music.note.list")
-                                .font(.system(size: 11))
-                                .foregroundStyle(!engine.isNowPlayingViewActive ? t.primary : t.onSurfaceVariant)
-                                .frame(width: 28, height: 24)
-                                .background(!engine.isNowPlayingViewActive ? t.surfaceContainerHigh : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(t.onSurface)
+                                .frame(width: 32, height: 32)
+                                .background(t.surfaceContainerLow)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
-                        .padding(2)
-                        .background(t.surfaceContainerLow)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .buttonStyle(.plain)
+                        .padding(.leading, 8)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 8)
                 }
             }
         }

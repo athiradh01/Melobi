@@ -405,13 +405,15 @@ struct VinylView: View {
             .frame(width: size, height: size)
             .rotationEffect(.degrees(rotation))
             .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+            
+            // Tonearm Assembly
+            TonearmView(size: size, angle: isPlaying ? 10 : -25)
+                .animation(.easeInOut(duration: 0.6), value: isPlaying)
+                .offset(x: size * 0.42, y: -size * 0.42)
         }
         .onAppear {
             updateRotation()
             extractColor(from: artworkPath)
-        }
-        .onChange(of: isPlaying) { _, _ in
-            updateRotation()
         }
         .onChange(of: artworkPath) { _, path in
             extractColor(from: path)
@@ -432,25 +434,126 @@ struct VinylView: View {
     }
     
     private func updateRotation() {
-        if isPlaying {
-            // Start spinning from current rotation to rotation + 360
-            // Repeat forever
-            withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
-                rotation += 360
-            }
-        } else {
-            // Stop spinning where it is
-            withAnimation(.default) {
-                // To freeze it, we'd need to capture the current state,
-                // but for simple cases, just removing the animation is fine.
-                // However, without a TimelineView or custom animatable modifier, 
-                // freezing mid-air is tricky in pure SwiftUI. 
-                // For now, let's at least stop the re-renders.
-            }
+        // Spin continuously at a constant speed
+        withAnimation(.linear(duration: 20).repeatForever(autoreverses: false)) {
+            rotation += 360
         }
     }
 }
 
+// MARK: - Tonearm
+struct TonearmView: View {
+    let size: CGFloat
+    let angle: Double
+    
+    private var armLength: CGFloat { size * 0.45 }
+    private var armWidth: CGFloat { max(4, size * 0.015) }
+    
+    var body: some View {
+        ZStack(alignment: .top) {
+            
+            // 2. Main Silver Arm Shaft
+            RoundedRectangle(cornerRadius: armWidth / 2)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(white: 0.5), Color(white: 0.9), Color(white: 0.4)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .frame(width: armWidth, height: armLength)
+                .offset(y: size * 0.08)
+                .shadow(color: .black.opacity(0.3), radius: 2, x: 2, y: 0)
+            
+            // 3. Connector & Headshell Assembly
+            ZStack(alignment: .top) {
+                // Black Connector Base (attaches to silver arm)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(white: 0.15))
+                    .frame(width: armWidth * 1.5, height: size * 0.06)
+                
+                // Angled Headshell
+                ZStack(alignment: .top) {
+                    // Main black headshell body
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(white: 0.12))
+                        .frame(width: size * 0.04, height: size * 0.08)
+                        .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                    
+                    // Stylus section (steps down)
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color(white: 0.1))
+                        .frame(width: size * 0.03, height: size * 0.04)
+                        .offset(y: size * 0.08)
+                    
+                    // Red accent on top front
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color(red: 0.85, green: 0.2, blue: 0.2))
+                        .frame(width: size * 0.03, height: size * 0.02)
+                        .offset(y: size * 0.07)
+                    
+                    // Finger Lift Hook
+                    Path { path in
+                        let w = size * 0.03
+                        let h = size * 0.04
+                        path.move(to: CGPoint(x: 0, y: 0))
+                        path.addCurve(
+                            to: CGPoint(x: w, y: h),
+                            control1: CGPoint(x: w * 0.8, y: 0),
+                            control2: CGPoint(x: w, y: h * 0.5)
+                        )
+                    }
+                    .stroke(Color(white: 0.1), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .frame(width: size * 0.03, height: size * 0.04)
+                    .offset(x: size * 0.035, y: size * 0.04)
+                }
+                .rotationEffect(.degrees(-20), anchor: .top) // Angle the headshell inwards
+                .offset(x: -size * 0.015, y: size * 0.04) // Shift it to connect cleanly
+                
+            }
+            .offset(y: size * 0.08 + armLength - size * 0.01) // Position at the end of the silver arm
+            
+            // 1. Pivot Base (Large Black Block)
+            ZStack(alignment: .center) {
+                // Background cylinder counterweight
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(white: 0.15))
+                    .frame(width: size * 0.14, height: size * 0.04)
+                    .offset(x: -size * 0.03, y: size * 0.02)
+                
+                // Main Block
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(white: 0.25), Color(white: 0.1)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: size * 0.09, height: size * 0.12)
+                    .shadow(color: .black.opacity(0.5), radius: 5, y: 3)
+                
+                // Vents/Ribs on the block
+                HStack(spacing: size * 0.008) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color(white: 0.05))
+                            .frame(width: size * 0.005, height: size * 0.05)
+                    }
+                }
+                .offset(x: size * 0.01, y: size * 0.02)
+                
+                // Top Pivot screw
+                Circle()
+                    .fill(Color(white: 0.1))
+                    .frame(width: size * 0.02, height: size * 0.02)
+                    .overlay(Circle().stroke(Color(white: 0.05), lineWidth: 1))
+                    .offset(y: -size * 0.04)
+            }
+            .offset(x: size * 0.01, y: -size * 0.02) // Adjust block position over the pivot
+            
+        }
+        .rotationEffect(.degrees(angle), anchor: .top)
+    }
+}
 // MARK: - Track Row (No numbers)
 struct TrackRow: View {
     let track: Track
