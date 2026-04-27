@@ -9,6 +9,7 @@ struct NowPlayingView: View {
     @Environment(LyricsState.self) var lyrics
     @Environment(LibraryStore.self) var library
     @Environment(\.colorScheme) var colorScheme
+    @AppStorage("isVinylStyle") private var isVinylStyle: Bool = true
     
     let db: DatabasePool
     
@@ -136,11 +137,28 @@ struct NowPlayingView: View {
                 
                 Spacer()
                 
-                VinylView(
-                    artworkPath: engine.currentTrack?.artworkPath,
-                    isPlaying: engine.isPlaying,
-                    size: 380
-                )
+                if isVinylStyle {
+                    VinylView(
+                        artworkPath: engine.currentTrack?.artworkPath,
+                        isPlaying: engine.isPlaying,
+                        size: 380
+                    )
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(t.primaryDim.opacity(0.15))
+                            .blur(radius: 40)
+                            .offset(y: 16)
+                            
+                        ArtworkView(
+                            path: engine.currentTrack?.artworkPath,
+                            size: 380,
+                            cornerRadius: 16
+                        )
+                        .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
+                    }
+                    .frame(width: 380, height: 380)
+                }
                 
                 VStack(spacing: 10) {
                     Text(engine.currentTrack?.title ?? "No Track Playing")
@@ -155,6 +173,52 @@ struct NowPlayingView: View {
                         .foregroundStyle(t.primaryDim.opacity(0.8))
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
+                        
+                    // Artwork Style Toggle
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            isVinylStyle.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isVinylStyle {
+                                Image(systemName: "square.fill")
+                                    .font(.system(size: 11))
+                            } else {
+                                ZStack {
+                                    // Flat Vinyl Disc
+                                    Circle()
+                                        .fill(t.primary)
+                                        .frame(width: 12, height: 12)
+                                    // Spindle Hole
+                                    Circle()
+                                        .fill(t.surfaceContainerHighest.opacity(0.8))
+                                        .frame(width: 3, height: 3)
+                                    // Tonearm Line
+                                    Capsule()
+                                        .fill(t.primary)
+                                        .frame(width: 1.5, height: 7)
+                                        .rotationEffect(.degrees(20))
+                                        .offset(x: 5, y: -4)
+                                    // Tonearm Pivot
+                                    Circle()
+                                        .fill(t.primary)
+                                        .frame(width: 3, height: 3)
+                                        .offset(x: 6.5, y: -6.5)
+                                }
+                                .frame(width: 14, height: 14)
+                            }
+                            Text(isVinylStyle ? "Square Cover" : "Vinyl Disc")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(t.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(t.surfaceContainerHighest.opacity(0.5))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
                 }
                 .padding(.horizontal, 40)
                 
