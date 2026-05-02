@@ -132,7 +132,7 @@ struct MusicLibraryView: View {
                             }
                         }
                     }
-                    .padding(.bottom, 100)
+                    .padding(.bottom, 160)
                 }
             }
             .frame(minWidth: 340)

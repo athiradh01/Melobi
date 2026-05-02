@@ -340,6 +340,21 @@ struct NowPlayingBar: View {
                             .popover(isPresented: $isQueuePopoverPresented, arrowEdge: .bottom) {
                                 QueuePopoverView()
                             }
+                            
+                            // Cancel / Close playback button
+                            Button {
+                                engine.pause()
+                                engine.clearQueue()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(t.onSurfaceVariant)
+                                    .frame(width: 32, height: 32)
+                                    .background(t.surfaceContainerLow)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.leading, 4)
                         }
                         .transition(.opacity)
                     }

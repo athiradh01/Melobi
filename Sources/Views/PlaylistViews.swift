@@ -111,7 +111,7 @@ struct LikedSongsView: View {
                             }
                         }
                     }
-                    .padding(.bottom, 100)
+                    .padding(.bottom, 160)
                 }
             }
         }
@@ -459,7 +459,7 @@ struct PlaylistDetailView: View {
                             }
                         }
                     }
-                    .padding(.bottom, 100)
+                    .padding(.bottom, 160)
                 }
             }
         }
