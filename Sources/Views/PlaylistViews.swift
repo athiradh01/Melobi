@@ -538,7 +538,7 @@ struct AddTracksSheet: View {
     
     @Environment(LibraryStore.self) var library
     @State private var searchText = ""
-    @State private var sortBy: String = "dateAdded"
+    @State private var sortBy: String = "custom"
     
     private var filteredTracks: [Track] {
         var list = library.tracks
@@ -557,7 +557,7 @@ struct AddTracksSheet: View {
         case "duration":
             list.sort { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
         default:
-            list.reverse() // dateAdded — latest added first
+            break // custom — keep library order
         }
         return list
     }
@@ -568,15 +568,16 @@ struct AddTracksSheet: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 Text("Add Songs to \"\(playlist.name)\"")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(t.onSurface)
+                    .lineLimit(1)
                 Spacer()
                 
                 Menu {
-                    Button { sortBy = "dateAdded" } label: {
-                        Label("Date Added", systemImage: sortBy == "dateAdded" ? "checkmark" : "")
+                    Button { sortBy = "custom" } label: {
+                        Label("Custom", systemImage: sortBy == "custom" ? "checkmark" : "")
                     }
                     Button { sortBy = "title" } label: {
                         Label("Title", systemImage: sortBy == "title" ? "checkmark" : "")
@@ -591,12 +592,12 @@ struct AddTracksSheet: View {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(t.onSurfaceVariant)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 26, height: 26)
                         .background(t.surfaceContainerHighest.opacity(0.4))
                         .clipShape(Circle())
                 }
                 .menuStyle(.borderlessButton)
-                .frame(width: 24)
+                .fixedSize()
                 
                 Button("Done") { onDismiss() }
                     .font(.system(size: 13, weight: .bold))
