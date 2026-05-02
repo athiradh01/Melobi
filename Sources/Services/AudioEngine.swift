@@ -157,6 +157,15 @@ public final class AudioEngine: NSObject {
         isPlaying = false
     }
     
+    public func stop() {
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        isPlaying = false
+        currentTrack = nil
+        currentTime = 0
+        duration = 0
+    }
+    
     public func togglePlayPause() {
         isPlaying ? pause() : play()
     }

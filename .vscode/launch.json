@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Melobi}",
+            "name": "Debug Resonance",
+            "target": "Resonance",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Resonance"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Melobi}",
+            "name": "Release Resonance",
+            "target": "Resonance",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Resonance"
+        }
+    ]
+}

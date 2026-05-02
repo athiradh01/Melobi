@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Melobi}/OfflineAudioPlayer",
+            "name": "Debug Resonance (OfflineAudioPlayer)",
+            "target": "Resonance",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Resonance (OfflineAudioPlayer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Melobi}/OfflineAudioPlayer",
+            "name": "Release Resonance (OfflineAudioPlayer)",
+            "target": "Resonance",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Resonance (OfflineAudioPlayer)"
+        }
+    ]
+}

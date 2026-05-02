@@ -121,6 +121,31 @@ public final class AppDatabase {
             }
         }
         
+        migrator.registerMigration("v3") { db in
+            try db.create(table: "playlist") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("name", .text).notNull()
+                t.column("artworkPath", .text)
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+            }
+            
+            try db.create(table: "playlistTrack") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("playlistId", .integer).notNull().references("playlist", onDelete: .cascade)
+                t.column("trackId", .integer).notNull().references("track", onDelete: .cascade)
+                t.column("sortOrder", .integer).notNull()
+                t.column("addedAt", .datetime).notNull()
+                t.uniqueKey(["playlistId", "trackId"])
+            }
+            
+            try db.create(table: "likedTrack") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("trackId", .integer).notNull().unique().references("track", onDelete: .cascade)
+                t.column("likedAt", .datetime).notNull()
+            }
+        }
+        
         return migrator
     }
 }

@@ -136,3 +136,61 @@ public struct ChapterProgress: Codable, FetchableRecord, MutablePersistableRecor
         id = inserted.rowID
     }
 }
+
+// MARK: - Playlist
+
+public struct Playlist: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
+    public var id: Int64?
+    public var name: String
+    public var artworkPath: String?
+    public var createdAt: Date
+    public var updatedAt: Date
+    
+    public init(id: Int64? = nil, name: String, artworkPath: String? = nil, createdAt: Date = Date(), updatedAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.artworkPath = artworkPath
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+    
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}
+
+public struct PlaylistTrack: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
+    public var id: Int64?
+    public var playlistId: Int64
+    public var trackId: Int64
+    public var sortOrder: Int
+    public var addedAt: Date
+    
+    public init(id: Int64? = nil, playlistId: Int64, trackId: Int64, sortOrder: Int, addedAt: Date = Date()) {
+        self.id = id
+        self.playlistId = playlistId
+        self.trackId = trackId
+        self.sortOrder = sortOrder
+        self.addedAt = addedAt
+    }
+    
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}
+
+public struct LikedTrack: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
+    public var id: Int64?
+    public var trackId: Int64
+    public var likedAt: Date
+    
+    public init(id: Int64? = nil, trackId: Int64, likedAt: Date = Date()) {
+        self.id = id
+        self.trackId = trackId
+        self.likedAt = likedAt
+    }
+    
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}

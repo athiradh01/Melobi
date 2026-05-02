@@ -73,7 +73,7 @@ struct MusicLibraryView: View {
                                         .padding(.trailing, 4)
                                         .animation(.easeInOut(duration: 0.15), value: isSelected(track))
                                         
-                                        TrackRow(
+                                    LibraryTrackRow(
                                             track: track,
                                             isCurrent: engine.currentTrack?.id == track.id,
                                             isPlaying: engine.currentTrack?.id == track.id && engine.isPlaying
@@ -91,7 +91,7 @@ struct MusicLibraryView: View {
                                     lyrics.load(for: URL(fileURLWithPath: track.filePath))
                                     engine.play()
                                 } label: {
-                                    TrackRow(
+                                    LibraryTrackRow(
                                         track: track,
                                         isCurrent: engine.currentTrack?.id == track.id,
                                         isPlaying: engine.currentTrack?.id == track.id && engine.isPlaying
@@ -103,6 +103,30 @@ struct MusicLibraryView: View {
                                         removeSingleTrack(track)
                                     } label: {
                                         Label("Remove from Library", systemImage: "trash")
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    Button {
+                                        guard let tid = track.id,
+                                              let dbWriter = AppDatabase.shared.dbWriter else { return }
+                                        library.toggleLike(trackId: tid, db: dbWriter)
+                                    } label: {
+                                        let isLiked = track.id.map { library.isTrackLiked(trackId: $0) } ?? false
+                                        Label(isLiked ? "Unlike" : "Like", systemImage: isLiked ? "heart.slash.fill" : "heart")
+                                    }
+                                    
+                                    if !library.playlists.isEmpty {
+                                        Menu("Add to Playlist") {
+                                            ForEach(library.playlists) { playlist in
+                                                Button(playlist.name) {
+                                                    guard let tid = track.id,
+                                                          let pid = playlist.id,
+                                                          let dbWriter = AppDatabase.shared.dbWriter else { return }
+                                                    library.addTrackToPlaylist(trackId: tid, playlistId: pid, db: dbWriter)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -555,15 +579,19 @@ struct TonearmView: View {
     }
 }
 // MARK: - Track Row (No numbers)
-struct TrackRow: View {
+struct LibraryTrackRow: View {
     let track: Track
     let isCurrent: Bool
     let isPlaying: Bool
     @Environment(\.colorScheme) var colorScheme
+    @Environment(LibraryStore.self) var library
+    
+    @State private var isHovering = false
     
     private var t: Theme { Theme(scheme: colorScheme) }
     
     var body: some View {
+        let isLiked = track.id.map { library.isTrackLiked(trackId: $0) } ?? false
         HStack(spacing: 12) {
             ArtworkView(path: track.artworkPath, size: 42, cornerRadius: 6)
             
@@ -581,6 +609,23 @@ struct TrackRow: View {
             
             Spacer()
             
+            // Heart button — always visible if liked, visible on hover otherwise
+            if isLiked || isHovering {
+                Button {
+                    guard let tid = track.id, let dbw = AppDatabase.shared.dbWriter else { return }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                        library.toggleLike(trackId: tid, db: dbw)
+                    }
+                } label: {
+                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                        .font(.system(size: 13))
+                        .foregroundStyle(isLiked ? Color(red: 1, green: 0.24, blue: 0.31) : t.onSurfaceVariant.opacity(0.5))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+            }
+            
             if isPlaying {
                 Image(systemName: "waveform")
                     .symbolEffect(.variableColor.iterative)
@@ -595,7 +640,8 @@ struct TrackRow: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 7)
-        .background(isCurrent ? t.surfaceContainerLow : Color.clear)
+        .background(isCurrent ? t.surfaceContainerLow : (isHovering ? t.surfaceContainerLow.opacity(0.4) : Color.clear))
         .contentShape(Rectangle())
+        .onHover { h in isHovering = h }
     }
 }
