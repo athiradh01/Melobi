@@ -33,7 +33,7 @@ struct NowPlayingBar: View {
     }
     
     private var trackInfoView: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             ArtworkView(path: currentArtworkPath, size: 44, cornerRadius: 8)
             VStack(alignment: .leading, spacing: 2) {
                 MarqueeText(text: trackTitle, font: .system(size: 13, weight: .bold))
@@ -50,7 +50,7 @@ struct NowPlayingBar: View {
                         .lineLimit(1)
                 }
             }
-            .frame(maxWidth: 160, alignment: .leading)
+            .frame(maxWidth: 140, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -58,7 +58,7 @@ struct NowPlayingBar: View {
                 }
             }
             
-            // Like button
+            // Like + Stop buttons right next to the name
             if engine.currentTrack != nil {
                 let isLiked = engine.currentTrack?.id.map { LibraryStore.shared.isTrackLiked(trackId: $0) } ?? false
                 Button {
@@ -68,9 +68,21 @@ struct NowPlayingBar: View {
                     }
                 } label: {
                     Image(systemName: isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: 14))
+                        .font(.system(size: 13))
                         .foregroundStyle(isLiked ? Color(r: 255, g: 60, b: 80) : t.onSurfaceVariant.opacity(0.6))
                         .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    engine.stop()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
+                        .frame(width: 22, height: 22)
+                        .background(t.surfaceContainerHighest.opacity(0.4))
+                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
@@ -340,21 +352,6 @@ struct NowPlayingBar: View {
                             .popover(isPresented: $isQueuePopoverPresented, arrowEdge: .bottom) {
                                 QueuePopoverView()
                             }
-                            
-                            // Cancel / Close playback button
-                            Button {
-                                engine.pause()
-                                engine.clearQueue()
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(t.onSurfaceVariant)
-                                    .frame(width: 32, height: 32)
-                                    .background(t.surfaceContainerLow)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.leading, 4)
                         }
                         .transition(.opacity)
                     }

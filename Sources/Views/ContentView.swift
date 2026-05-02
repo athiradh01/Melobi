@@ -17,7 +17,7 @@ enum AppSection: String, CaseIterable {
         case .music: return "music.note.list"
         case .audiobooks: return "book.closed"
         case .likedSongs: return "heart"
-        case .playlists: return "square.stack"
+        case .playlists: return "music.note.list"
         }
     }
     var filledIcon: String {
@@ -26,7 +26,7 @@ enum AppSection: String, CaseIterable {
         case .music: return "music.note.list"
         case .audiobooks: return "book.closed.fill"
         case .likedSongs: return "heart.fill"
-        case .playlists: return "square.stack.fill"
+        case .playlists: return "music.note.list"
         }
     }
     
@@ -240,7 +240,7 @@ struct ContentView: View {
                         }
                     } label: {
                         HStack(spacing: 10) {
-                            Image(systemName: "square.stack")
+                            Image(systemName: "music.note.list")
                                 .font(.system(size: 13))
                                 .frame(width: 20)
                             Text(playlist.name)

@@ -111,7 +111,7 @@ struct LikedSongsView: View {
                             }
                         }
                     }
-                    .padding(.bottom, 160)
+                    .padding(.bottom, 100)
                 }
             }
         }
@@ -316,7 +316,7 @@ struct PlaylistDetailView: View {
     
     @State private var tracks: [Track] = []
     @State private var showAddTracksSheet = false
-    @State private var showDeleteConfirm = false
+
     @State private var sortBy: String = "order"
     
     private var t: Theme { Theme(scheme: colorScheme) }
@@ -326,6 +326,7 @@ struct PlaylistDetailView: View {
         case "title": return tracks.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return tracks.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return tracks.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
+        case "dateAdded": return tracks.sorted { ($0.id ?? 0) < ($1.id ?? 0) }
         default: return tracks
         }
     }
@@ -401,34 +402,23 @@ struct PlaylistDetailView: View {
                 
                 Spacer()
                 
-                // Sort & Delete
-                VStack(spacing: 8) {
-                    Menu {
-                        Button { sortBy = "order" } label: { Label("Playlist Order", systemImage: sortBy == "order" ? "checkmark" : "") }
-                        Button { sortBy = "title" } label: { Label("Title", systemImage: sortBy == "title" ? "checkmark" : "") }
-                        Button { sortBy = "artist" } label: { Label("Artist", systemImage: sortBy == "artist" ? "checkmark" : "") }
-                        Button { sortBy = "duration" } label: { Label("Duration", systemImage: sortBy == "duration" ? "checkmark" : "") }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(t.onSurfaceVariant)
-                            .frame(width: 28, height: 28)
-                            .background(t.surfaceContainerHighest.opacity(0.4))
-                            .clipShape(Circle())
-                    }
-                    .menuStyle(.borderlessButton)
-                    .frame(width: 28)
-                    
-                    Button { showDeleteConfirm = true } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.red.opacity(0.7))
-                            .frame(width: 28, height: 28)
-                            .background(Color.red.opacity(0.08))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
+                // Sort
+                Menu {
+                    Button { sortBy = "order" } label: { Label("Playlist Order", systemImage: sortBy == "order" ? "checkmark" : "") }
+                    Button { sortBy = "dateAdded" } label: { Label("Date Added", systemImage: sortBy == "dateAdded" ? "checkmark" : "") }
+                    Button { sortBy = "title" } label: { Label("Title", systemImage: sortBy == "title" ? "checkmark" : "") }
+                    Button { sortBy = "artist" } label: { Label("Artist", systemImage: sortBy == "artist" ? "checkmark" : "") }
+                    Button { sortBy = "duration" } label: { Label("Duration", systemImage: sortBy == "duration" ? "checkmark" : "") }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(t.onSurfaceVariant)
+                        .frame(width: 28, height: 28)
+                        .background(t.surfaceContainerHighest.opacity(0.4))
+                        .clipShape(Circle())
                 }
+                .menuStyle(.borderlessButton)
+                .frame(width: 28)
             }
             .padding(.horizontal, 28)
             .padding(.top, 24)
@@ -459,7 +449,7 @@ struct PlaylistDetailView: View {
                             }
                         }
                     }
-                    .padding(.bottom, 160)
+                    .padding(.bottom, 100)
                 }
             }
         }
@@ -472,15 +462,7 @@ struct PlaylistDetailView: View {
                 refreshTracks()
             })
         }
-        .alert("Delete Playlist?", isPresented: $showDeleteConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
-                library.deletePlaylist(playlist, db: db)
-                onGoBack?()
-            }
-        } message: {
-            Text("This will permanently delete \"\(playlist.name)\" and remove all its tracks.")
-        }
+
     }
     
     private func refreshTracks() {
@@ -517,7 +499,7 @@ struct AddTracksSheet: View {
     
     @Environment(LibraryStore.self) var library
     @State private var searchText = ""
-    @State private var sortBy: String = "title"
+    @State private var sortBy: String = "dateAdded"
     
     private var filteredTracks: [Track] {
         var list = library.tracks
@@ -529,12 +511,14 @@ struct AddTracksSheet: View {
             }
         }
         switch sortBy {
+        case "title":
+            list.sort { ($0.title ?? "") < ($1.title ?? "") }
         case "artist":
             list.sort { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration":
             list.sort { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
         default:
-            list.sort { ($0.title ?? "") < ($1.title ?? "") }
+            break // dateAdded — keep library order
         }
         return list
     }
@@ -545,13 +529,16 @@ struct AddTracksSheet: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 12) {
                 Text("Add Songs to \"\(playlist.name)\"")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(t.onSurface)
                 Spacer()
                 
                 Menu {
+                    Button { sortBy = "dateAdded" } label: {
+                        Label("Date Added", systemImage: sortBy == "dateAdded" ? "checkmark" : "")
+                    }
                     Button { sortBy = "title" } label: {
                         Label("Title", systemImage: sortBy == "title" ? "checkmark" : "")
                     }
@@ -563,8 +550,11 @@ struct AddTracksSheet: View {
                     }
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(t.primary)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(t.onSurfaceVariant)
+                        .frame(width: 24, height: 24)
+                        .background(t.surfaceContainerHighest.opacity(0.4))
+                        .clipShape(Circle())
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
