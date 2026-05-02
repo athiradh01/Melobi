@@ -350,7 +350,7 @@ public final class LibraryStore {
         guard playlist.id != nil else { return }
         do {
             try db.write { conn in
-                try playlist.delete(conn)
+                _ = try playlist.delete(conn)
             }
         } catch {
             print("[LibraryStore] Failed to delete playlist: \(error)")
