@@ -557,7 +557,7 @@ struct AddTracksSheet: View {
         case "duration":
             list.sort { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
         default:
-            break // dateAdded — keep library order
+            list.reverse() // dateAdded — latest added first
         }
         return list
     }
