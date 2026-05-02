@@ -19,10 +19,9 @@ struct LikedSongsView: View {
         case "title": return likedList.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return likedList.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return likedList.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
-        case "dateAdded": return likedList.sorted { a, b in
-            if a.dateAdded == b.dateAdded { return (a.id ?? 0) < (b.id ?? 0) }
-            return a.dateAdded < b.dateAdded
-        }
+        case "dateAdded":
+            let libraryOrder = Dictionary(uniqueKeysWithValues: library.tracks.enumerated().map { ($1.id ?? -1, $0) })
+            return likedList.sorted { (libraryOrder[$0.id ?? -1] ?? Int.max) < (libraryOrder[$1.id ?? -1] ?? Int.max) }
         default: return likedList
         }
     }
@@ -330,10 +329,9 @@ struct PlaylistDetailView: View {
         case "title": return tracks.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return tracks.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return tracks.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
-        case "dateAdded": return tracks.sorted { a, b in
-            if a.dateAdded == b.dateAdded { return (a.id ?? 0) < (b.id ?? 0) }
-            return a.dateAdded < b.dateAdded
-        }
+        case "dateAdded":
+            let libraryOrder = Dictionary(uniqueKeysWithValues: library.tracks.enumerated().map { ($1.id ?? -1, $0) })
+            return tracks.sorted { (libraryOrder[$0.id ?? -1] ?? Int.max) < (libraryOrder[$1.id ?? -1] ?? Int.max) }
         default: return tracks
         }
     }
