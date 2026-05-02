@@ -458,6 +458,21 @@ public final class LibraryStore {
         }
     }
     
+    public func reorderPlaylistTracks(playlistId: Int64, trackIds: [Int64], db: DatabasePool) {
+        do {
+            try db.write { conn in
+                for (index, trackId) in trackIds.enumerated() {
+                    try conn.execute(
+                        sql: "UPDATE playlistTrack SET sortOrder = ? WHERE playlistId = ? AND trackId = ?",
+                        arguments: [index, playlistId, trackId]
+                    )
+                }
+            }
+        } catch {
+            print("[LibraryStore] Failed to reorder playlist tracks: \(error)")
+        }
+    }
+    
     // MARK: - Liked Songs
     
     public func toggleLike(trackId: Int64, db: DatabasePool) {

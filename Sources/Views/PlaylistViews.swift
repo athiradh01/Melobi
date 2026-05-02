@@ -332,12 +332,11 @@ struct PlaylistDetailView: View {
         case "title": return tracks.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return tracks.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return tracks.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
-        case "dateAdded":
-            let libraryOrder = Dictionary(uniqueKeysWithValues: library.tracks.enumerated().map { ($1.id ?? -1, $0) })
-            return tracks.sorted { (libraryOrder[$0.id ?? -1] ?? Int.max) < (libraryOrder[$1.id ?? -1] ?? Int.max) }
-        default: return tracks
+        default: return tracks // custom/order — keep playlist sortOrder
         }
     }
+    
+    private var isCustomMode: Bool { sortBy == "custom" }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -426,8 +425,8 @@ struct PlaylistDetailView: View {
                 
                 // Sort
                 Menu {
+                    Button { sortBy = "custom" } label: { Label("Custom", systemImage: sortBy == "custom" ? "checkmark" : "") }
                     Button { sortBy = "order" } label: { Label("Playlist Order", systemImage: sortBy == "order" ? "checkmark" : "") }
-                    Button { sortBy = "dateAdded" } label: { Label("Date Added", systemImage: sortBy == "dateAdded" ? "checkmark" : "") }
                     Button { sortBy = "title" } label: { Label("Title", systemImage: sortBy == "title" ? "checkmark" : "") }
                     Button { sortBy = "artist" } label: { Label("Artist", systemImage: sortBy == "artist" ? "checkmark" : "") }
                     Button { sortBy = "duration" } label: { Label("Duration", systemImage: sortBy == "duration" ? "checkmark" : "") }
@@ -457,6 +456,52 @@ struct PlaylistDetailView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
+            } else if isCustomMode {
+                // Custom mode: drag to reorder
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
+                            let playing = engine.currentTrack?.id == track.id && engine.isPlaying
+                            HStack(spacing: 0) {
+                                Image(systemName: "line.3.horizontal")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(t.outlineVariant.opacity(0.5))
+                                    .frame(width: 24)
+                                    .padding(.leading, 4)
+                                
+                                TrackRow(track: track, index: index + 1, isPlaying: playing, t: t) {
+                                    onPlayTrack(track, tracks)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .draggable(track.id.map { String($0) } ?? "") {
+                                Text(track.title ?? "Track")
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            .dropDestination(for: String.self) { droppedItems, _ in
+                                guard let droppedIdStr = droppedItems.first,
+                                      let droppedId = Int64(droppedIdStr),
+                                      let fromIndex = tracks.firstIndex(where: { $0.id == droppedId }),
+                                      let toIndex = tracks.firstIndex(where: { $0.id == track.id }),
+                                      fromIndex != toIndex else { return false }
+                                tracks.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+                                if let pid = playlist.id {
+                                    let trackIds = tracks.compactMap { $0.id }
+                                    library.reorderPlaylistTracks(playlistId: pid, trackIds: trackIds, db: db)
+                                }
+                                return true
+                            }
+                            .contextMenu {
+                                removeFromPlaylistButton(for: track)
+                                likeToggleButton(for: track)
+                            }
+                        }
+                    }
+                    .padding(.bottom, 100)
+                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
