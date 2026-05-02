@@ -214,6 +214,31 @@ struct NowPlayingView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 8)
+                    
+                    // Like button
+                    if let tid = engine.currentTrack?.id {
+                        let isLiked = LibraryStore.shared.isTrackLiked(trackId: tid)
+                        Button {
+                            guard let dbWriter = AppDatabase.shared.dbWriter else { return }
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                LibraryStore.shared.toggleLike(trackId: tid, db: dbWriter)
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .font(.system(size: 13))
+                                    .contentTransition(.symbolEffect(.replace))
+                                Text(isLiked ? "Liked" : "Like")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                            .foregroundStyle(isLiked ? Color(r: 255, g: 60, b: 80) : t.onSurfaceVariant)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(isLiked ? Color(r: 255, g: 60, b: 80).opacity(0.12) : t.surfaceContainerHighest.opacity(0.5))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.horizontal, 40)
                 

@@ -8,12 +8,16 @@ enum AppSection: String, CaseIterable {
     case home = "Home"
     case music = "Library"
     case audiobooks = "Audiobooks"
+    case likedSongs = "Liked Songs"
+    case playlists = "Playlists"
     
     var icon: String {
         switch self {
         case .home: return "house"
         case .music: return "music.note.list"
         case .audiobooks: return "book.closed"
+        case .likedSongs: return "heart"
+        case .playlists: return "music.note.list"
         }
     }
     var filledIcon: String {
@@ -21,8 +25,13 @@ enum AppSection: String, CaseIterable {
         case .home: return "house.fill"
         case .music: return "music.note.list"
         case .audiobooks: return "book.closed.fill"
+        case .likedSongs: return "heart.fill"
+        case .playlists: return "music.note.list"
         }
     }
+    
+    /// Sections that appear as the main nav items
+    static var mainCases: [AppSection] { [.home, .music, .audiobooks] }
 }
 
 // MARK: - Sort Options
@@ -44,6 +53,9 @@ struct ContentView: View {
     @State private var themeManager = ThemeManager.shared
     @State private var sortOption: SortOption = .dateAdded
     @State private var sortAscending = false
+    @State private var selectedPlaylist: Playlist?
+    @State private var showNewPlaylistAlert = false
+    @State private var newPlaylistName = ""
     @Environment(\.colorScheme) var systemScheme
     
     let db: DatabasePool
@@ -175,56 +187,104 @@ struct ContentView: View {
             
             // Nav items
             VStack(spacing: 2) {
-                ForEach(AppSection.allCases, id: \.self) { sec in
-                    Button {
-                        section = sec
-                        if engine.isNowPlayingViewActive {
-                            engine.isNowPlayingViewActive = false
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: section == sec ? sec.filledIcon : sec.icon)
-                                .font(.system(size: 15))
-                                .frame(width: 20)
-                            Text(sec.rawValue)
-                                .font(.system(size: 13, weight: section == sec ? .bold : .medium))
-                                .lineLimit(1)
-                            Spacer()
-                        }
-                        .foregroundStyle(section == sec ? t.primary : t.onSurfaceVariant)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .contentShape(Rectangle())
-                        .background {
-                            if section == sec {
-                                if t.isGlassmorphic {
-                                    // Glass card with glow for Luminous Audio
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(Color.white.opacity(0.08))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .stroke(
-                                                    LinearGradient(
-                                                        colors: [Color.white.opacity(0.2), Color.white.opacity(0.05)],
-                                                        startPoint: .top, endPoint: .bottom
-                                                    ),
-                                                    lineWidth: 1
-                                                )
-                                        )
-                                        .shadow(color: t.primaryContainer.opacity(0.15), radius: 12, x: 0, y: 0)
-                                } else {
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(t.surfaceContainer)
-                                }
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
+                ForEach(AppSection.mainCases, id: \.self) { sec in
+                    sidebarButton(for: sec)
                 }
             }
             .padding(.horizontal, 12)
             .onChange(of: section) { _, _ in
                 deactivateSearch()
+                selectedPlaylist = nil
+            }
+            
+            // MARK: - Your Music section
+            VStack(alignment: .leading, spacing: 2) {
+                Text("YOUR MUSIC")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(t.outlineVariant)
+                    .tracking(2)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 8)
+                
+                // Liked Songs
+                sidebarButton(for: .likedSongs)
+                
+                // Playlists header + create
+                HStack {
+                    Text("PLAYLISTS")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(t.outlineVariant)
+                        .tracking(2)
+                    Spacer()
+                    Button {
+                        showNewPlaylistAlert = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(t.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 6)
+                
+                // Playlist items
+                ForEach(library.playlists) { playlist in
+                    Button {
+                        selectedPlaylist = playlist
+                        section = .playlists
+                        if engine.isNowPlayingViewActive {
+                            engine.isNowPlayingViewActive = false
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 13))
+                                .frame(width: 20)
+                            Text(playlist.name)
+                                .font(.system(size: 12, weight: (section == .playlists && selectedPlaylist?.id == playlist.id) ? .bold : .medium))
+                                .lineLimit(1)
+                            Spacer()
+                        }
+                        .foregroundStyle((section == .playlists && selectedPlaylist?.id == playlist.id) ? t.primary : t.onSurfaceVariant)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                        .background {
+                            if section == .playlists && selectedPlaylist?.id == playlist.id {
+                                sidebarSelectionBackground
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Delete Playlist", role: .destructive) {
+                            if selectedPlaylist?.id == playlist.id {
+                                selectedPlaylist = nil
+                                section = .home
+                            }
+                            library.deletePlaylist(playlist, db: db)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .alert("New Playlist", isPresented: $showNewPlaylistAlert) {
+                TextField("Playlist name", text: $newPlaylistName)
+                Button("Create") {
+                    let name = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !name.isEmpty else { return }
+                    if let pl = library.createPlaylist(name: name, db: db) {
+                        selectedPlaylist = pl
+                        section = .playlists
+                    }
+                    newPlaylistName = ""
+                }
+                Button("Cancel", role: .cancel) { newPlaylistName = "" }
+            } message: {
+                Text("Enter a name for your new playlist.")
             }
 
             Spacer()
@@ -330,13 +390,7 @@ struct ContentView: View {
                 HomeView(
                     onNavigateToLibrary: { section = .music },
                     onPlayTrack: { track in
-                        deactivateSearch()
-                        let sorted = sortedTracks
-                        engine.queue = sorted
-                        engine.currentQueueIndex = sorted.firstIndex(where: { $0.id == track.id }) ?? 0
-                        engine.load(track: track)
-                        lyrics.load(for: URL(fileURLWithPath: track.filePath))
-                        engine.play()
+                        playTrack(track, from: sortedTracks)
                     },
                     onPlayAudiobook: { book in
                         deactivateSearch()
@@ -354,7 +408,89 @@ struct ContentView: View {
                 MusicLibraryView(sortOption: $sortOption, sortAscending: $sortAscending, db: db)
             case .audiobooks:
                 AudiobooksView(db: db)
+            case .likedSongs:
+                LikedSongsView(db: db, onPlayTrack: { track, queue in
+                    playTrack(track, from: queue)
+                })
+            case .playlists:
+                if let playlist = selectedPlaylist {
+                    PlaylistDetailView(playlist: playlist, db: db, onPlayTrack: { track, queue in
+                        playTrack(track, from: queue)
+                    })
+                } else {
+                    PlaylistsOverviewView(db: db, onSelectPlaylist: { playlist in
+                        selectedPlaylist = playlist
+                    })
+                }
             }
+        }
+    }
+    
+    private func playTrack(_ track: Track, from queue: [Track]) {
+        deactivateSearch()
+        engine.queue = queue
+        engine.currentQueueIndex = queue.firstIndex(where: { $0.id == track.id }) ?? 0
+        engine.load(track: track)
+        lyrics.load(for: URL(fileURLWithPath: track.filePath))
+        engine.play()
+    }
+    
+    // MARK: - Sidebar Helpers
+    
+    private func sidebarButton(for sec: AppSection) -> some View {
+        Button {
+            section = sec
+            if sec != .playlists { selectedPlaylist = nil }
+            if engine.isNowPlayingViewActive {
+                engine.isNowPlayingViewActive = false
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: section == sec && (sec != .playlists || selectedPlaylist == nil) ? sec.filledIcon : sec.icon)
+                    .font(.system(size: 15))
+                    .frame(width: 20)
+                Text(sec.rawValue)
+                    .font(.system(size: 13, weight: (section == sec && (sec != .playlists || selectedPlaylist == nil)) ? .bold : .medium))
+                    .lineLimit(1)
+                Spacer()
+                if sec == .likedSongs {
+                    Text("\(library.likedTrackIds.count)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(t.outlineVariant)
+                }
+            }
+            .foregroundStyle((section == sec && (sec != .playlists || selectedPlaylist == nil)) ? t.primary : t.onSurfaceVariant)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .background {
+                if section == sec && (sec != .playlists || selectedPlaylist == nil) {
+                    sidebarSelectionBackground
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private var sidebarSelectionBackground: some View {
+        if t.isGlassmorphic {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.2), Color.white.opacity(0.05)],
+                                startPoint: .top, endPoint: .bottom
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: t.primaryContainer.opacity(0.15), radius: 12, x: 0, y: 0)
+        } else {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(t.surfaceContainer)
         }
     }
 }

@@ -37,6 +37,7 @@ struct ResonanceApp: App {
             }
             self.db = pool
             LibraryStore.shared.startObserving(db: pool)
+            LibraryStore.shared.startPlaylistObserving(db: pool)
         } catch {
             fatalError("Failed to initialize database: \(error)")
         }

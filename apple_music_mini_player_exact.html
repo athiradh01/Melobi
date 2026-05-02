@@ -1,0 +1,463 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .scene {
+    display: flex;
+    gap: 32px;
+    padding: 28px 20px;
+    background: var(--color-background-tertiary);
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .col-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── The player shell ── */
+  .player {
+    position: relative;
+    width: 260px;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+      0 12px 48px rgba(0,0,0,0.55),
+      0 2px 8px rgba(0,0,0,0.3),
+      0 0 0 0.5px rgba(255,255,255,0.06);
+    cursor: default;
+  }
+
+  /* Album art — always the same size, no layout shift */
+  .art {
+    display: block;
+    width: 260px;
+    height: 260px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .art-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(145deg, #2e2420 0%, #1a1510 50%, #0e0c08 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .art-placeholder svg { width: 72px; height: 72px; opacity: 0.18; fill: white; }
+
+  /* ── Top chrome (traffic lights + toolbar) ── */
+  .top-chrome {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .top-chrome.fade-in { pointer-events: auto; }
+
+  .traffic {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .toolbar {
+    display: flex;
+    gap: 1px;
+  }
+  .tb {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.65);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .tb:hover { background: rgba(255,255,255,0.14); }
+  .tb.on { color: rgba(255,185,80,0.95); }
+  .tb svg { width: 14px; height: 14px; }
+
+  /* ── Glass overlay panel (slides up from bottom) ── */
+  .glass-panel {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 10;
+    /* glass gradient: transparent at top, opaque at bottom */
+    background: linear-gradient(
+      to bottom,
+      rgba(12,10,8,0) 0%,
+      rgba(12,10,8,0.55) 28%,
+      rgba(12,10,8,0.82) 55%,
+      rgba(12,10,8,0.96) 100%
+    );
+    backdrop-filter: blur(0px); /* subtle — art still bleeds through */
+    -webkit-backdrop-filter: blur(0px);
+    padding: 18px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  /* ── Idle state: no chrome, no panel visible ── */
+  .state-idle .top-chrome { opacity: 0; transition: opacity 0.22s ease; }
+  .state-idle .glass-panel { opacity: 0; transform: translateY(12px); transition: opacity 0.22s ease, transform 0.22s ease; }
+
+  /* ── Hover state: chrome + panel visible ── */
+  .state-hover .top-chrome { opacity: 1; transition: opacity 0.18s ease; }
+  .state-hover .glass-panel { opacity: 1; transform: translateY(0); transition: opacity 0.18s ease, transform 0.2s cubic-bezier(0.22,1,0.36,1); }
+
+  /* ── Track info row ── */
+  .track-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .track-text { flex: 1; min-width: 0; }
+  .track-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+    letter-spacing: -0.01em;
+  }
+  .track-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
+  .track-actions { display: flex; gap: 4px; margin-top: 1px; }
+  .track-act {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .track-act:hover { color: rgba(255,255,255,0.8); }
+  .track-act svg { width: 14px; height: 14px; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .prog-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 2px;
+    position: relative;
+  }
+  .prog-fill {
+    height: 100%;
+    background: rgba(255,255,255,0.85);
+    border-radius: 2px;
+    position: relative;
+  }
+  .prog-fill::after {
+    content: '';
+    position: absolute;
+    right: -4px; top: -3.5px;
+    width: 10px; height: 10px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    color: rgba(255,255,255,0.32);
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
+
+  /* ── Playback controls ── */
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+  .cb {
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: rgba(255,255,255,0.75);
+    transition: color 0.12s, transform 0.1s;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  .cb:hover { color: white; transform: scale(1.06); }
+  .cb.dim { color: rgba(255,255,255,0.38); }
+  .cb.dim:hover { color: rgba(255,255,255,0.75); }
+  .cb svg { display: block; }
+
+  /* ── Expanded height (queue/lyrics panel below art) ── */
+  .player.expanded .art { height: 300px; width: 300px; }
+  .player.expanded { width: 300px; }
+
+  /* Panel that appears BELOW art in expanded + queue/lyrics states */
+  .bottom-panel {
+    background: rgba(14,12,10,0.97);
+    position: relative; /* in normal flow, below art */
+  }
+
+  .panel-divider { height: 1px; background: rgba(255,255,255,0.07); }
+
+  /* Lyrics lines */
+  .lyric-block { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 13px; }
+  .lline {
+    font-size: 14px; font-weight: 600;
+    color: rgba(255,255,255,0.18);
+    line-height: 1.35;
+    cursor: pointer;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+    transition: color 0.18s;
+  }
+  .lline:hover { color: rgba(255,255,255,0.45); }
+  .lline.act { color: rgba(255,255,255,0.92); font-size: 15.5px; }
+
+  /* Queue */
+  .autoplay-bar {
+    display: flex;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .apb {
+    flex: 1; text-align: center;
+    font-size: 11px; color: rgba(255,255,255,0.32);
+    padding: 9px 0 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    font-family: -apple-system, 'SF Pro Text', sans-serif;
+  }
+  .apb + .apb { border-left: 1px solid rgba(255,255,255,0.06); }
+
+  .q-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px 4px;
+  }
+  .q-label { font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.38); letter-spacing: 0.05em; text-transform: uppercase; font-family: -apple-system, sans-serif; }
+  .q-clear { font-size: 12px; color: rgba(255,140,50,0.85); cursor: pointer; font-family: -apple-system, sans-serif; }
+
+  .q-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .q-item:hover { background: rgba(255,255,255,0.05); }
+  .q-thumb {
+    width: 36px; height: 36px; border-radius: 5px;
+    background: #2e2820; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .q-thumb svg { width: 14px; height: 14px; opacity: 0.25; fill: white; }
+  .q-info { flex: 1; min-width: 0; }
+  .q-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: -apple-system, sans-serif; }
+  .q-sub { font-size: 10px; color: rgba(255,255,255,0.32); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; font-family: -apple-system, sans-serif; }
+  .q-more { color: rgba(255,255,255,0.22); font-size: 14px; cursor: pointer; }
+</style>
+
+<h2 class="sr-only">Apple Music mini player — exact hover behaviour mockup</h2>
+
+<div class="scene">
+
+  <!-- 1. IDLE -->
+  <div class="col">
+    <div class="col-label">Idle</div>
+    <div class="player state-idle">
+      <div class="top-chrome">
+        <div class="traffic"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+        <div class="toolbar">
+          <div class="tb"><svg viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 7h7M3 10h8M3 13h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 16 16" fill="none"><path d="M8 3.5L3 7v6h4v-3h2v3h4V7L8 3.5z" fill="currentColor" opacity=".6"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M3 8h10M3 11h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+        </div>
+      </div>
+      <div class="art">
+        <div class="art-placeholder"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+      </div>
+      <div class="glass-panel">
+        <div class="track-row">
+          <div class="track-text"><div class="track-title">Amsham - അംശം</div><div class="track-sub">Aksomaniac/M.H.R/Bhumi/Circle Tone</div></div>
+          <div class="track-actions">
+            <div class="track-act"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3.5L13 6l-2.5 2.5.5 3.5L8 10.5 5 12l.5-3.5L3 6l3.5-.5L8 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+            <div class="track-act"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="12" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/></svg></div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="prog-track"><div class="prog-fill" style="width:18%"></div></div>
+          <div class="time-row"><span>0:43</span><span>-3:59</span></div>
+        </div>
+        <div class="ctrl-row">
+          <div class="cb dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></div>
+          <div class="cb"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></div>
+          <div class="cb"><svg width="38" height="38" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></div>
+          <div class="cb"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM14 6h2v12h-2z"/></svg></div>
+          <div class="cb dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. HOVER (controls visible) -->
+  <div class="col">
+    <div class="col-label">Hover</div>
+    <div class="player state-hover">
+      <div class="top-chrome">
+        <div class="traffic"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+        <div class="toolbar">
+          <div class="tb"><svg viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 7h7M3 10h8M3 13h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 16 16" fill="none"><path d="M8 3.5L3 7v6h4v-3h2v3h4V7L8 3.5z" fill="currentColor" opacity=".6"/></svg></div>
+          <div class="tb"><svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M3 8h10M3 11h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+        </div>
+      </div>
+      <div class="art">
+        <div class="art-placeholder"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+      </div>
+      <div class="glass-panel">
+        <div class="track-row">
+          <div class="track-text"><div class="track-title">Amsham - അംശം</div><div class="track-sub">Aksomaniac/M.H.R/Bhumi/Circle Tone</div></div>
+          <div class="track-actions">
+            <div class="track-act"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3.5L13 6l-2.5 2.5.5 3.5L8 10.5 5 12l.5-3.5L3 6l3.5-.5L8 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+            <div class="track-act"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="12" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/></svg></div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="prog-track"><div class="prog-fill" style="width:18%"></div></div>
+          <div class="time-row"><span>0:43</span><span>-3:59</span></div>
+        </div>
+        <div class="ctrl-row">
+          <div class="cb dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></div>
+          <div class="cb"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></div>
+          <div class="cb"><svg width="38" height="38" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></div>
+          <div class="cb"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM14 6h2v12h-2z"/></svg></div>
+          <div class="cb dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. INTERACTIVE (hover to reveal) -->
+  <div class="col">
+    <div class="col-label">Interactive ↕</div>
+    <div class="player state-idle" id="live-player">
+      <div class="top-chrome">
+        <div class="traffic"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+        <div class="toolbar">
+          <div class="tb" id="tb-lyrics"><svg viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 7h7M3 10h8M3 13h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+          <div class="tb" id="tb-queue"><svg viewBox="0 0 16 16" fill="none"><path d="M8 3.5L3 7v6h4v-3h2v3h4V7L8 3.5z" fill="currentColor" opacity=".6"/></svg></div>
+          <div class="tb" id="tb-vol"><svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M3 8h10M3 11h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+        </div>
+      </div>
+      <div class="art">
+        <div class="art-placeholder"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+      </div>
+      <div class="glass-panel">
+        <div class="track-row">
+          <div class="track-text"><div class="track-title">Amsham - അംശം</div><div class="track-sub">Aksomaniac/M.H.R/Bhumi/Circle Tone</div></div>
+          <div class="track-actions">
+            <div class="track-act"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2l1.5 3.5L13 6l-2.5 2.5.5 3.5L8 10.5 5 12l.5-3.5L3 6l3.5-.5L8 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+            <div class="track-act"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="12" cy="8" r="1" fill="currentColor"/><circle cx="4" cy="8" r="1" fill="currentColor"/></svg></div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="prog-track"><div class="prog-fill" style="width:18%"></div></div>
+          <div class="time-row"><span>0:43</span><span>-3:59</span></div>
+        </div>
+        <div class="ctrl-row">
+          <div class="cb dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></div>
+          <div class="cb"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></div>
+          <div class="cb"><svg width="38" height="38" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></div>
+          <div class="cb"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM14 6h2v12h-2z"/></svg></div>
+          <div class="cb dim"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg></div>
+        </div>
+      </div>
+      <!-- Lyrics panel (hidden by default, below art) -->
+      <div id="lyrics-panel" style="display:none;">
+        <div class="panel-divider"></div>
+        <div class="bottom-panel">
+          <div class="lyric-block">
+            <div class="lline">Vaanam thurannu veenu</div>
+            <div class="lline act">Amsham nee enthinaanu</div>
+            <div class="lline">Mazhayayi pozhiyaanu</div>
+            <div class="lline">Njan ente vazhiyaanu</div>
+          </div>
+        </div>
+      </div>
+      <!-- Queue panel (hidden by default) -->
+      <div id="queue-panel" style="display:none;">
+        <div class="panel-divider"></div>
+        <div class="bottom-panel">
+          <div class="autoplay-bar">
+            <div class="apb"><span style="font-size:14px;opacity:0.5;">∞</span> AutoPlay</div>
+            <div class="apb"><span style="font-size:11px;opacity:0.4;">✕</span> Crossfade</div>
+          </div>
+          <div class="q-header"><span class="q-label">Continue Playing</span><span class="q-clear">Clear</span></div>
+          <div>
+            <div class="q-item"><div class="q-thumb"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="q-info"><div class="q-name">ZILL</div><div class="q-sub">M.H.R/Shafi Kollam/JOKER390P</div></div><div class="q-more">···</div></div>
+            <div class="q-item"><div class="q-thumb"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="q-info"><div class="q-name">Majboor</div><div class="q-sub">Sheheryar Rehan/Zoha Waseem</div></div><div class="q-more">···</div></div>
+            <div class="q-item"><div class="q-thumb"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="q-info"><div class="q-name">Banda Kaam Ka</div><div class="q-sub">Chaar Diwaari / Sanjith Hegde</div></div><div class="q-more">···</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--color-text-secondary);text-align:center;max-width:200px;line-height:1.4;">Hover player to show controls · Click lyrics/queue icons</div>
+  </div>
+
+</div>
+
+<script>
+  const lp = document.getElementById('live-player');
+  const lyrPanel = document.getElementById('lyrics-panel');
+  const qPanel = document.getElementById('queue-panel');
+  const tbLyrics = document.getElementById('tb-lyrics');
+  const tbQueue = document.getElementById('tb-queue');
+
+  let panelMode = 'none';
+
+  lp.addEventListener('mouseenter', () => { lp.className = 'player state-hover'; });
+  lp.addEventListener('mouseleave', () => { lp.className = 'player state-idle'; });
+
+  function setPanel(mode) {
+    if (panelMode === mode) {
+      panelMode = 'none';
+    } else {
+      panelMode = mode;
+    }
+    lyrPanel.style.display = panelMode === 'lyrics' ? 'block' : 'none';
+    qPanel.style.display = panelMode === 'queue' ? 'block' : 'none';
+    tbLyrics.className = 'tb' + (panelMode === 'lyrics' ? ' on' : '');
+    tbQueue.className = 'tb' + (panelMode === 'queue' ? ' on' : '');
+  }
+
+  tbLyrics.addEventListener('click', (e) => { e.stopPropagation(); setPanel('lyrics'); });
+  tbQueue.addEventListener('click', (e) => { e.stopPropagation(); setPanel('queue'); });
+</script>

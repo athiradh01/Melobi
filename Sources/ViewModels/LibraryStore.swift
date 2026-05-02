@@ -285,4 +285,190 @@ public final class LibraryStore {
             print("[LibraryStore] Failed to purge stale entries: \(error)")
         }
     }
+    
+    // MARK: - Playlists
+    
+    public var playlists: [Playlist] = []
+    public var likedTrackIds: Set<Int64> = []
+    
+    private var playlistObservation: AnyDatabaseCancellable?
+    private var likedObservation: AnyDatabaseCancellable?
+    
+    public func startPlaylistObserving(db: DatabasePool) {
+        playlistObservation = ValueObservation.tracking { db in
+            try Playlist.order(Column("updatedAt").desc).fetchAll(db)
+        }
+        .start(in: db, scheduling: .immediate) { error in
+            print("Playlist observation error: \(error)")
+        } onChange: { [weak self] playlists in
+            Task { @MainActor in
+                self?.playlists = playlists
+            }
+        }
+        
+        likedObservation = ValueObservation.tracking { db in
+            try LikedTrack.fetchAll(db)
+        }
+        .start(in: db, scheduling: .immediate) { error in
+            print("Liked observation error: \(error)")
+        } onChange: { [weak self] liked in
+            Task { @MainActor in
+                self?.likedTrackIds = Set(liked.map { $0.trackId })
+            }
+        }
+    }
+    
+    // MARK: - Playlist CRUD
+    
+    public func createPlaylist(name: String, db: DatabasePool) -> Playlist? {
+        do {
+            return try db.write { conn in
+                var playlist = Playlist(name: name)
+                try playlist.insert(conn)
+                return playlist
+            }
+        } catch {
+            print("[LibraryStore] Failed to create playlist: \(error)")
+            return nil
+        }
+    }
+    
+    public func renamePlaylist(_ playlist: Playlist, to name: String, db: DatabasePool) {
+        guard var p = playlist as Playlist?, p.id != nil else { return }
+        p.name = name
+        p.updatedAt = Date()
+        do {
+            try db.write { conn in
+                try p.update(conn)
+            }
+        } catch {
+            print("[LibraryStore] Failed to rename playlist: \(error)")
+        }
+    }
+    
+    public func deletePlaylist(_ playlist: Playlist, db: DatabasePool) {
+        guard playlist.id != nil else { return }
+        do {
+            try db.write { conn in
+                try playlist.delete(conn)
+            }
+        } catch {
+            print("[LibraryStore] Failed to delete playlist: \(error)")
+        }
+    }
+    
+    public func addTrackToPlaylist(trackId: Int64, playlistId: Int64, db: DatabasePool) {
+        do {
+            try db.write { conn in
+                // Get next sort order
+                let maxOrder = try Int.fetchOne(conn,
+                    sql: "SELECT MAX(sortOrder) FROM playlistTrack WHERE playlistId = ?",
+                    arguments: [playlistId]
+                ) ?? -1
+                
+                var pt = PlaylistTrack(playlistId: playlistId, trackId: trackId, sortOrder: maxOrder + 1)
+                try pt.insert(conn)
+                
+                // Update playlist timestamp
+                try conn.execute(
+                    sql: "UPDATE playlist SET updatedAt = ? WHERE id = ?",
+                    arguments: [Date(), playlistId]
+                )
+            }
+        } catch {
+            // Likely duplicate — silently ignore
+        }
+    }
+    
+    public func removeTrackFromPlaylist(trackId: Int64, playlistId: Int64, db: DatabasePool) {
+        do {
+            try db.write { conn in
+                try PlaylistTrack
+                    .filter(Column("playlistId") == playlistId && Column("trackId") == trackId)
+                    .deleteAll(conn)
+                    
+                try conn.execute(
+                    sql: "UPDATE playlist SET updatedAt = ? WHERE id = ?",
+                    arguments: [Date(), playlistId]
+                )
+            }
+        } catch {
+            print("[LibraryStore] Failed to remove track from playlist: \(error)")
+        }
+    }
+    
+    public func tracksForPlaylist(_ playlist: Playlist, db: DatabasePool) -> [Track] {
+        guard let pid = playlist.id else { return [] }
+        return (try? db.read { conn in
+            try Track.fetchAll(conn,
+                sql: """
+                    SELECT track.* FROM track
+                    INNER JOIN playlistTrack ON playlistTrack.trackId = track.id
+                    WHERE playlistTrack.playlistId = ?
+                    ORDER BY playlistTrack.sortOrder ASC
+                """,
+                arguments: [pid]
+            )
+        }) ?? []
+    }
+    
+    public func trackCountForPlaylist(_ playlist: Playlist, db: DatabasePool) -> Int {
+        guard let pid = playlist.id else { return 0 }
+        return (try? db.read { conn in
+            try Int.fetchOne(conn,
+                sql: "SELECT COUNT(*) FROM playlistTrack WHERE playlistId = ?",
+                arguments: [pid]
+            )
+        }) ?? 0
+    }
+    
+    /// Returns the artwork path from the first track in the playlist (used as a fallback cover).
+    public func playlistCoverArtwork(_ playlist: Playlist, db: DatabasePool) -> String? {
+        guard let pid = playlist.id else { return nil }
+        return try? db.read { conn in
+            try String.fetchOne(conn,
+                sql: """
+                    SELECT track.artworkPath FROM track
+                    INNER JOIN playlistTrack ON playlistTrack.trackId = track.id
+                    WHERE playlistTrack.playlistId = ?
+                    ORDER BY playlistTrack.sortOrder ASC
+                    LIMIT 1
+                """,
+                arguments: [pid]
+            )
+        }
+    }
+    
+    // MARK: - Liked Songs
+    
+    public func toggleLike(trackId: Int64, db: DatabasePool) {
+        do {
+            try db.write { conn in
+                if let existing = try LikedTrack.filter(Column("trackId") == trackId).fetchOne(conn) {
+                    try existing.delete(conn)
+                } else {
+                    var liked = LikedTrack(trackId: trackId)
+                    try liked.insert(conn)
+                }
+            }
+        } catch {
+            print("[LibraryStore] Failed to toggle like: \(error)")
+        }
+    }
+    
+    public func isTrackLiked(trackId: Int64) -> Bool {
+        likedTrackIds.contains(trackId)
+    }
+    
+    public func likedTracks(db: DatabasePool) -> [Track] {
+        return (try? db.read { conn in
+            try Track.fetchAll(conn,
+                sql: """
+                    SELECT track.* FROM track
+                    INNER JOIN likedTrack ON likedTrack.trackId = track.id
+                    ORDER BY likedTrack.likedAt DESC
+                """
+            )
+        }) ?? []
+    }
 }

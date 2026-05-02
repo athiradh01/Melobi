@@ -51,11 +51,28 @@ struct NowPlayingBar: View {
                 }
             }
             .frame(maxWidth: 160, alignment: .leading)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                engine.isNowPlayingViewActive.toggle()
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    engine.isNowPlayingViewActive.toggle()
+                }
+            }
+            
+            // Like button
+            if engine.currentTrack != nil {
+                let isLiked = engine.currentTrack?.id.map { LibraryStore.shared.isTrackLiked(trackId: $0) } ?? false
+                Button {
+                    guard let tid = engine.currentTrack?.id, let db = AppDatabase.shared.dbWriter else { return }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                        LibraryStore.shared.toggleLike(trackId: tid, db: db)
+                    }
+                } label: {
+                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                        .font(.system(size: 14))
+                        .foregroundStyle(isLiked ? Color(r: 255, g: 60, b: 80) : t.onSurfaceVariant.opacity(0.6))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
             }
         }
     }

@@ -392,6 +392,24 @@ struct HomeView: View {
                                 .lineLimit(1)
                         }
                         Spacer()
+                        
+                        // Inline like button
+                        if let tid = track.id {
+                            let isLiked = library.isTrackLiked(trackId: tid)
+                            Button {
+                                guard let dbWriter = AppDatabase.shared.dbWriter else { return }
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                                    library.toggleLike(trackId: tid, db: dbWriter)
+                                }
+                            } label: {
+                                Image(systemName: isLiked ? "heart.fill" : "heart")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(isLiked ? Color(r: 255, g: 60, b: 80) : t.outlineVariant.opacity(0.5))
+                                    .contentTransition(.symbolEffect(.replace))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        
                         Text(formatTime(Double(track.durationMs ?? 0) / 1000))
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
                             .foregroundStyle(t.outline)

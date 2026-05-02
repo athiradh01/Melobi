@@ -73,7 +73,7 @@ struct MusicLibraryView: View {
                                         .padding(.trailing, 4)
                                         .animation(.easeInOut(duration: 0.15), value: isSelected(track))
                                         
-                                        TrackRow(
+                                    LibraryTrackRow(
                                             track: track,
                                             isCurrent: engine.currentTrack?.id == track.id,
                                             isPlaying: engine.currentTrack?.id == track.id && engine.isPlaying
@@ -91,7 +91,7 @@ struct MusicLibraryView: View {
                                     lyrics.load(for: URL(fileURLWithPath: track.filePath))
                                     engine.play()
                                 } label: {
-                                    TrackRow(
+                                    LibraryTrackRow(
                                         track: track,
                                         isCurrent: engine.currentTrack?.id == track.id,
                                         isPlaying: engine.currentTrack?.id == track.id && engine.isPlaying
@@ -103,6 +103,30 @@ struct MusicLibraryView: View {
                                         removeSingleTrack(track)
                                     } label: {
                                         Label("Remove from Library", systemImage: "trash")
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    Button {
+                                        guard let tid = track.id,
+                                              let dbWriter = AppDatabase.shared.dbWriter else { return }
+                                        library.toggleLike(trackId: tid, db: dbWriter)
+                                    } label: {
+                                        let isLiked = track.id.map { library.isTrackLiked(trackId: $0) } ?? false
+                                        Label(isLiked ? "Unlike" : "Like", systemImage: isLiked ? "heart.slash.fill" : "heart")
+                                    }
+                                    
+                                    if !library.playlists.isEmpty {
+                                        Menu("Add to Playlist") {
+                                            ForEach(library.playlists) { playlist in
+                                                Button(playlist.name) {
+                                                    guard let tid = track.id,
+                                                          let pid = playlist.id,
+                                                          let dbWriter = AppDatabase.shared.dbWriter else { return }
+                                                    library.addTrackToPlaylist(trackId: tid, playlistId: pid, db: dbWriter)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -555,7 +579,7 @@ struct TonearmView: View {
     }
 }
 // MARK: - Track Row (No numbers)
-struct TrackRow: View {
+struct LibraryTrackRow: View {
     let track: Track
     let isCurrent: Bool
     let isPlaying: Bool
