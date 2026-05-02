@@ -19,7 +19,10 @@ struct LikedSongsView: View {
         case "title": return likedList.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return likedList.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return likedList.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
-        case "dateAdded": return likedList.sorted { $0.dateAdded < $1.dateAdded }
+        case "dateAdded": return likedList.sorted { a, b in
+            if a.dateAdded == b.dateAdded { return (a.id ?? 0) < (b.id ?? 0) }
+            return a.dateAdded < b.dateAdded
+        }
         default: return likedList
         }
     }
@@ -327,7 +330,10 @@ struct PlaylistDetailView: View {
         case "title": return tracks.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return tracks.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return tracks.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
-        case "dateAdded": return tracks.sorted { $0.dateAdded < $1.dateAdded }
+        case "dateAdded": return tracks.sorted { a, b in
+            if a.dateAdded == b.dateAdded { return (a.id ?? 0) < (b.id ?? 0) }
+            return a.dateAdded < b.dateAdded
+        }
         default: return tracks
         }
     }
