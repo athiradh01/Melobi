@@ -538,7 +538,7 @@ struct AddTracksSheet: View {
     
     @Environment(LibraryStore.self) var library
     @State private var searchText = ""
-    @State private var sortBy: String = "custom"
+    @State private var sortBy: String = "title"
     
     private var filteredTracks: [Track] {
         var list = library.tracks
@@ -550,14 +550,12 @@ struct AddTracksSheet: View {
             }
         }
         switch sortBy {
-        case "title":
-            list.sort { ($0.title ?? "") < ($1.title ?? "") }
         case "artist":
             list.sort { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration":
             list.sort { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
         default:
-            break // custom — keep library order
+            list.sort { ($0.title ?? "") < ($1.title ?? "") }
         }
         return list
     }
@@ -576,9 +574,6 @@ struct AddTracksSheet: View {
                 Spacer()
                 
                 Menu {
-                    Button { sortBy = "custom" } label: {
-                        Label("Custom", systemImage: sortBy == "custom" ? "checkmark" : "")
-                    }
                     Button { sortBy = "title" } label: {
                         Label("Title", systemImage: sortBy == "title" ? "checkmark" : "")
                     }
