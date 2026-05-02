@@ -584,10 +584,14 @@ struct LibraryTrackRow: View {
     let isCurrent: Bool
     let isPlaying: Bool
     @Environment(\.colorScheme) var colorScheme
+    @Environment(LibraryStore.self) var library
+    
+    @State private var isHovering = false
     
     private var t: Theme { Theme(scheme: colorScheme) }
     
     var body: some View {
+        let isLiked = track.id.map { library.isTrackLiked(trackId: $0) } ?? false
         HStack(spacing: 12) {
             ArtworkView(path: track.artworkPath, size: 42, cornerRadius: 6)
             
@@ -605,6 +609,23 @@ struct LibraryTrackRow: View {
             
             Spacer()
             
+            // Heart button — always visible if liked, visible on hover otherwise
+            if isLiked || isHovering {
+                Button {
+                    guard let tid = track.id, let dbw = AppDatabase.shared.dbWriter else { return }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                        library.toggleLike(trackId: tid, db: dbw)
+                    }
+                } label: {
+                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                        .font(.system(size: 13))
+                        .foregroundStyle(isLiked ? Color(red: 1, green: 0.24, blue: 0.31) : t.onSurfaceVariant.opacity(0.5))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity.animation(.easeInOut(duration: 0.15)))
+            }
+            
             if isPlaying {
                 Image(systemName: "waveform")
                     .symbolEffect(.variableColor.iterative)
@@ -619,7 +640,8 @@ struct LibraryTrackRow: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 7)
-        .background(isCurrent ? t.surfaceContainerLow : Color.clear)
+        .background(isCurrent ? t.surfaceContainerLow : (isHovering ? t.surfaceContainerLow.opacity(0.4) : Color.clear))
         .contentShape(Rectangle())
+        .onHover { h in isHovering = h }
     }
 }

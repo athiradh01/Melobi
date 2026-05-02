@@ -416,6 +416,8 @@ struct ContentView: View {
                 if let playlist = selectedPlaylist {
                     PlaylistDetailView(playlist: playlist, db: db, onPlayTrack: { track, queue in
                         playTrack(track, from: queue)
+                    }, onGoBack: {
+                        selectedPlaylist = nil
                     })
                 } else {
                     PlaylistsOverviewView(db: db, onSelectPlaylist: { playlist in
