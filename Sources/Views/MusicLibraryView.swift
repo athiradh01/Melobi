@@ -112,7 +112,7 @@ struct MusicLibraryView: View {
                 }
             }
             .frame(minWidth: 340)
-            .background(t.surface)
+            .background(t.isGlassmorphic ? Color.clear : t.surface)
             
         }
         .alert("Remove \(selectedTrackIds.count) track\(selectedTrackIds.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {

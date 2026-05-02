@@ -52,7 +52,19 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(t.surfaceContainerLow)
+                .background {
+                    if t.isGlassmorphic {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.white.opacity(0.06))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                    } else {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(t.surfaceContainerLow)
+                    }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.top, 8)
 
@@ -94,7 +106,7 @@ struct HomeView: View {
             .padding(.horizontal, 24)
             .padding(.top, 12)
         }
-        .background(t.surface)
+        .background(t.isGlassmorphic ? Color.clear : t.surface)
         .onAppear {
             updateAlbums()
             updateRandomTracks()
@@ -195,10 +207,29 @@ struct HomeView: View {
                             Image(systemName: "play.fill").font(.system(size: 9))
                             Text("Play").font(.system(size: 11, weight: .bold))
                         }
-                        .foregroundStyle(t.primary)
+                        .foregroundStyle(
+                            t.isGlassmorphic
+                                ? Color.white
+                                : (colorScheme == .light ? t.primary : t.onPrimary)
+                        )
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
-                        .background(.white)
+                        .background {
+                            if t.isGlassmorphic {
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [t.primaryContainer, t.secondary.opacity(0.5)],
+                                            startPoint: .leading, endPoint: .trailing
+                                        )
+                                    )
+                                    .shadow(color: t.primaryContainer.opacity(0.4), radius: 10)
+                            } else {
+                                Capsule()
+                                    .fill(colorScheme == .light ? t.primaryContainer.opacity(0.2) : t.primary)
+                                    .background(colorScheme == .light ? Color.white.clipShape(Capsule()) : nil)
+                            }
+                        }
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -318,7 +349,7 @@ struct HomeView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 14) {
-                    ForEach(Array(library.filteredTracks.sorted { $0.dateAdded > $1.dateAdded }.prefix(8))) { track in
+                    ForEach(Array(library.filteredTracks.sorted { $0.dateAdded > $1.dateAdded }.prefix(15))) { track in
                         VStack(alignment: .leading, spacing: 5) {
                             ArtworkView(path: track.artworkPath, size: 120, cornerRadius: 8)
                                 .onTapGesture { onPlayTrack(track) }
@@ -372,7 +403,19 @@ struct HomeView: View {
                     .onTapGesture { onPlayTrack(track) }
                 }
             }
-            .background(t.surfaceContainerLow.opacity(0.3))
+            .background {
+                if t.isGlassmorphic {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(t.surfaceContainerLow.opacity(0.3))
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }

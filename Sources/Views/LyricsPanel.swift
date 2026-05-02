@@ -56,15 +56,7 @@ struct LyricsPanel: View {
                 ScrollViewReader { proxy in
                     ZStack(alignment: .bottomTrailing) {
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack(alignment: .leading, spacing: 22) {
-                                GeometryReader { geo in
-                                    Color.clear.preference(
-                                        key: ScrollOffsetKey.self,
-                                        value: geo.frame(in: .named("lyricsScroll")).minY
-                                    )
-                                }
-                                .frame(height: 0)
-                                
+                            LazyVStack(alignment: .leading, spacing: 22) {
                                 Spacer().frame(height: 20)
                                 
                                 ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { index, line in
@@ -84,6 +76,14 @@ struct LyricsPanel: View {
                                 
                                 Spacer().frame(height: 120)
                             }
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear.preference(
+                                        key: ScrollOffsetKey.self,
+                                        value: geo.frame(in: .named("lyricsScroll")).minY
+                                    )
+                                }
+                            )
                         }
                         .coordinateSpace(name: "lyricsScroll")
                         .onPreferenceChange(ScrollOffsetKey.self) { _ in

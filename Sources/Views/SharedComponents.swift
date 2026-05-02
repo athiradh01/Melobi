@@ -9,7 +9,7 @@ struct ArtworkView: View {
     @Environment(\.colorScheme) var colorScheme
     
     private var radius: CGFloat { cornerRadius ?? (size * 0.12) }
-    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme) }
+    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
     
     var body: some View {
         AsyncImageLoader(path: path) { img in

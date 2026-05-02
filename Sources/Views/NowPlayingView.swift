@@ -24,7 +24,7 @@ struct NowPlayingView: View {
                 musicLayout
             }
         }
-        .background(t.surface)
+        .background(t.isGlassmorphic ? Color.clear : t.surface)
     }
     
     // MARK: - Audiobook Layout
@@ -116,17 +116,12 @@ struct NowPlayingView: View {
                             engine.isNowPlayingViewActive = false
                         }
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("Back")
-                                .font(.system(size: 13, weight: .bold))
-                        }
-                        .foregroundStyle(t.onSurfaceVariant)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(t.surfaceContainerHighest.opacity(0.5))
-                        .clipShape(Capsule())
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(t.onSurfaceVariant)
+                            .frame(width: 32, height: 32)
+                            .background(t.surfaceContainerHighest.opacity(0.5))
+                            .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
                     

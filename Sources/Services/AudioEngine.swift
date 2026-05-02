@@ -19,13 +19,43 @@ public final class AudioEngine: NSObject {
     public var playbackRate: Float = 1.0 {
         didSet { player?.rate = isPlaying ? playbackRate : 0 }
     }
-    public var isShuffleOn = false
+    public var isShuffleOn = false {
+        didSet {
+            if isShuffleOn {
+                generateShuffleQueue()
+            } else {
+                shuffledIndices.removeAll()
+            }
+        }
+    }
     public var repeatMode: RepeatMode = .none
     public var queue: [Track] = [] {
-        didSet { shuffleHistory = [] }
+        didSet { 
+            shuffleHistory = []
+            if isShuffleOn { generateShuffleQueue() }
+        }
     }
-    public var currentQueueIndex: Int = 0
+    public var currentQueueIndex: Int = 0 {
+        didSet {
+            if isShuffleOn {
+                shuffledIndices.removeAll { $0 == currentQueueIndex }
+            }
+        }
+    }
     public var error: String?
+    
+    public var shuffledIndices: [Int] = []
+    
+    private func generateShuffleQueue() {
+        guard !queue.isEmpty else {
+            shuffledIndices = []
+            return
+        }
+        var indices = Array(0..<queue.count)
+        indices.removeAll { $0 == currentQueueIndex }
+        indices.shuffle()
+        shuffledIndices = indices
+    }
     
     /// Called when an audiobook's last chapter finishes playing. Receives (audiobook, lastChapterIndex).
     public var onChapterCompleted: ((Audiobook, Int) -> Void)?
@@ -137,6 +167,37 @@ public final class AudioEngine: NSObject {
         currentTime = t
     }
     
+    public func playUpcoming(at upcomingIndex: Int) {
+        if isShuffleOn {
+            guard upcomingIndex >= 0, upcomingIndex < shuffledIndices.count else { return }
+            
+            if !isGoingBack {
+                shuffleHistory.append(currentQueueIndex)
+                if shuffleHistory.count > 200 { shuffleHistory.removeFirst() }
+            }
+            isGoingBack = false
+            
+            shuffledIndices.removeFirst(upcomingIndex)
+            let nextQueueIndex = shuffledIndices.removeFirst()
+            currentQueueIndex = nextQueueIndex
+            load(track: queue[currentQueueIndex])
+            play()
+        } else {
+            let nextQueueIndex = currentQueueIndex + 1 + upcomingIndex
+            guard nextQueueIndex >= 0, nextQueueIndex < queue.count else { return }
+            
+            if !isGoingBack {
+                shuffleHistory.append(currentQueueIndex)
+                if shuffleHistory.count > 200 { shuffleHistory.removeFirst() }
+            }
+            isGoingBack = false
+            
+            currentQueueIndex = nextQueueIndex
+            load(track: queue[currentQueueIndex])
+            play()
+        }
+    }
+    
     public func next(wrap: Bool = true) {
         guard !queue.isEmpty else { return }
         // Record current position in shuffle history before moving forward
@@ -148,7 +209,19 @@ public final class AudioEngine: NSObject {
         
         var nextIndex = currentQueueIndex
         if isShuffleOn {
-            nextIndex = Int.random(in: 0..<queue.count)
+            if shuffledIndices.isEmpty {
+                if wrap && queue.count > 1 {
+                    generateShuffleQueue()
+                    nextIndex = shuffledIndices.removeFirst()
+                } else if wrap && queue.count == 1 {
+                    nextIndex = currentQueueIndex
+                } else {
+                    isPlaying = false
+                    return
+                }
+            } else {
+                nextIndex = shuffledIndices.removeFirst()
+            }
         } else {
             if currentQueueIndex + 1 < queue.count {
                 nextIndex = currentQueueIndex + 1

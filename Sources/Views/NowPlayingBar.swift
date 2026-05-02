@@ -13,8 +13,15 @@ struct NowPlayingBar: View {
     @State private var lastLyricsUpdate: TimeInterval = -1
     @State private var artworkAccent: Color = .clear
     @State private var lastChapterIndex: Int? = nil
+    @State private var preMuteVolume: Float = 0.5
+    @State private var isQueuePopoverPresented = false
+    @State private var isHoveringProgress = false
     
-    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme) }
+    // Volume expansion state
+    @State private var isVolumeExpanded = false
+    @State private var volumeCollapseTask: Task<Void, Never>?
+    
+    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
     private var currentArtworkPath: String? {
         engine.currentTrack?.artworkPath ?? engine.currentAudiobook?.artworkPath
     }
@@ -44,6 +51,12 @@ struct NowPlayingBar: View {
                 }
             }
             .frame(maxWidth: 160, alignment: .leading)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                engine.isNowPlayingViewActive.toggle()
+            }
         }
     }
     
@@ -75,18 +88,33 @@ struct NowPlayingBar: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(t.secondaryContainer)
-                            .frame(height: 4)
+                            .fill(t.isGlassmorphic ? Color.white.opacity(0.1) : t.secondaryContainer)
+                            .frame(height: (isHoveringProgress || isDragging) ? 8 : 4)
                         
                         let progress = displayDuration > 0
                             ? (isDragging ? dragValue : displayCurrentTime) / displayDuration
                             : 0
                         Capsule()
-                            .fill(t.primary)
-                            .frame(width: geo.size.width * max(0, min(1, progress)), height: 4)
+                            .fill(
+                                t.isGlassmorphic
+                                ? AnyShapeStyle(
+                                    LinearGradient(
+                                        colors: [t.primary, t.secondary],
+                                        startPoint: .leading, endPoint: .trailing
+                                    )
+                                )
+                                : AnyShapeStyle(t.primary)
+                            )
+                            .frame(width: geo.size.width * max(0, min(1, progress)), height: (isHoveringProgress || isDragging) ? 8 : 4)
+                            .shadow(color: t.isGlassmorphic ? t.primary.opacity(0.5) : Color.clear, radius: 8, x: 0, y: 0)
                     }
                     .frame(height: geo.size.height)
                     .contentShape(Rectangle())
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            isHoveringProgress = hovering
+                        }
+                    }
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
@@ -141,9 +169,18 @@ struct NowPlayingBar: View {
                     Button { engine.togglePlayPause() } label: {
                         ZStack {
                             Circle()
-                                .fill(t.primary)
+                                .fill(
+                                    t.isGlassmorphic
+                                    ? AnyShapeStyle(
+                                        LinearGradient(
+                                            colors: [t.primaryContainer, t.secondary.opacity(0.7)],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    : AnyShapeStyle(t.primary)
+                                )
                                 .frame(width: 44, height: 44)
-                                .shadow(color: t.primary.opacity(0.2), radius: 10, y: 3)
+                                .shadow(color: t.isGlassmorphic ? t.primaryContainer.opacity(0.4) : t.primary.opacity(0.2), radius: t.isGlassmorphic ? 16 : 10, y: t.isGlassmorphic ? 0 : 3)
                             Image(systemName: engine.isPlaying ? "pause.fill" : "play.fill")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(.white)
@@ -204,32 +241,90 @@ struct NowPlayingBar: View {
                         .menuStyle(.borderlessButton).fixedSize()
                     }
                     
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(t.onSurfaceVariant)
-                    Slider(
-                        value: Binding(get: { Double(engine.volume) }, set: { engine.volume = Float($0) }),
-                        in: 0...1
-                    )
-                    .frame(width: 80)
-                    .tint(t.primary)
+                    let volumeState = engine.volume == 0 ? 0 : (engine.volume < 0.3 ? 1 : (engine.volume < 0.7 ? 2 : 3))
+                    let iconName = engine.volume == 0 ? "speaker.slash.fill" : (engine.volume < 0.3 ? "speaker.wave.1.fill" : (engine.volume < 0.7 ? "speaker.wave.2.fill" : "speaker.wave.3.fill"))
                     
-                    // Toggle for Now Playing (Lyrics/Vinyl) vs List
-                    if !engine.isNowPlayingViewActive {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                engine.isNowPlayingViewActive.toggle()
+                    if isVolumeExpanded {
+                        HStack(spacing: 8) {
+                            Image(systemName: iconName)
+                                .font(.system(size: 14))
+                                .foregroundStyle(t.onSurfaceVariant)
+                                .contentTransition(.symbolEffect(.replace))
+                                .animation(.snappy(duration: 0.3), value: volumeState)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if engine.volume > 0 {
+                                        preMuteVolume = engine.volume
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            engine.volume = 0
+                                        }
+                                    } else {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            engine.volume = preMuteVolume > 0 ? preMuteVolume : 0.5
+                                        }
+                                    }
+                                    resetVolumeTimer()
+                                }
+                            
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(t.primary.opacity(0.3))
+                                        .frame(height: 4)
+                                    Capsule()
+                                        .fill(t.primary)
+                                        .frame(width: geo.size.width * CGFloat(max(0, min(1, engine.volume))), height: 4)
+                                }
+                                .frame(height: geo.size.height)
+                                .contentShape(Rectangle())
+                                .gesture(
+                                    DragGesture(minimumDistance: 0)
+                                        .onChanged { value in
+                                            volumeCollapseTask?.cancel()
+                                            let ratio = max(0, min(1, value.location.x / geo.size.width))
+                                            engine.volume = Float(ratio)
+                                        }
+                                        .onEnded { _ in
+                                            resetVolumeTimer()
+                                        }
+                                )
                             }
-                        } label: {
-                            Image(systemName: "text.quote")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(t.onSurface)
-                                .frame(width: 32, height: 32)
-                                .background(t.surfaceContainerLow)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .frame(width: 80, height: 14)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 8)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    } else {
+                        HStack(spacing: 12) {
+                            Image(systemName: iconName)
+                                .font(.system(size: 14))
+                                .foregroundStyle(t.onSurfaceVariant)
+                                .contentTransition(.symbolEffect(.replace))
+                                .animation(.snappy(duration: 0.3), value: volumeState)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        isVolumeExpanded = true
+                                    }
+                                    resetVolumeTimer()
+                                }
+                            
+                            // Queue Button
+                            Button {
+                                isQueuePopoverPresented.toggle()
+                            } label: {
+                                Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(t.onSurface)
+                                    .frame(width: 32, height: 32)
+                                    .background(isQueuePopoverPresented ? t.primary.opacity(0.2) : t.surfaceContainerLow)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.leading, 8)
+                            .popover(isPresented: $isQueuePopoverPresented, arrowEdge: .bottom) {
+                                QueuePopoverView()
+                            }
+                        }
+                        .transition(.opacity)
                     }
                 }
             }
@@ -249,12 +344,37 @@ struct NowPlayingBar: View {
                     )
                     .animation(.easeInOut(duration: 0.6), value: artworkAccent)
                 }
-                Rectangle().fill(.ultraThinMaterial)
+                
+                if t.isGlassmorphic {
+                    // Glass card background
+                    Color.white.opacity(0.06)
+                } else {
+                    Rectangle().fill(.ultraThinMaterial)
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                t.isGlassmorphic
+                ? AnyView(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.15), Color.white.opacity(0.03)],
+                                startPoint: .top, endPoint: .bottom
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                : AnyView(EmptyView())
+            )
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: artworkAccent == .clear ? t.primaryDim.opacity(0.10) : artworkAccent.opacity(0.18), radius: 24, x: 0, y: 0)
+        .shadow(
+            color: t.isGlassmorphic
+                ? t.primaryContainer.opacity(0.15)
+                : (artworkAccent == .clear ? t.primaryDim.opacity(0.10) : artworkAccent.opacity(0.18)),
+            radius: t.isGlassmorphic ? 20 : 24, x: 0, y: 0
+        )
 
         .onChange(of: currentArtworkPath) { _, path in
             extractColor(from: path)
@@ -305,6 +425,17 @@ struct NowPlayingBar: View {
         }
     }
     
+    private func resetVolumeTimer() {
+        volumeCollapseTask?.cancel()
+        volumeCollapseTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    isVolumeExpanded = false
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Artwork dominant color (nonisolated, safe for detached tasks)
@@ -330,4 +461,104 @@ func extractDominantColor(from image: NSImage) -> Color {
     }
     let f = CGFloat(total) * 255.0
     return Color(.sRGB, red: r/f, green: g/f, blue: b/f, opacity: 1.0)
+}
+
+// MARK: - Queue Popover View
+struct QueuePopoverView: View {
+    @Environment(AudioEngine.self) var engine
+    @Environment(\.colorScheme) var colorScheme
+    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Up Next")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(t.onSurface)
+                .padding()
+            
+            Divider()
+                .background(t.outlineVariant)
+            
+            if engine.queue.isEmpty {
+                Text("Queue is empty")
+                    .font(.system(size: 13))
+                    .foregroundStyle(t.onSurfaceVariant)
+                    .padding()
+            } else {
+                let upcoming: [Track] = engine.isShuffleOn 
+                    ? engine.shuffledIndices.map { engine.queue[$0] }
+                    : Array(engine.queue.suffix(from: min(engine.currentQueueIndex + 1, engine.queue.count)))
+                
+                if upcoming.isEmpty {
+                    Text("No upcoming tracks")
+                        .font(.system(size: 13))
+                        .foregroundStyle(t.onSurfaceVariant)
+                        .padding()
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(Array(upcoming.enumerated()), id: \.offset) { index, track in
+                                QueueTrackRow(track: track, index: index)
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+        }
+        .frame(width: 320, height: 400)
+        .background(t.surface)
+    }
+}
+
+// MARK: - Queue Track Row (Interactive)
+struct QueueTrackRow: View {
+    let track: Track
+    let index: Int
+    @Environment(AudioEngine.self) var engine
+    @Environment(\.colorScheme) var colorScheme
+    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
+    
+    @State private var isPressed = false
+    @State private var isHovering = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ArtworkView(path: track.artworkPath, size: 40, cornerRadius: 4)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.title ?? "Unknown Title")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(t.onSurface)
+                    .lineLimit(1)
+                Text(track.artist ?? "Unknown Artist")
+                    .font(.system(size: 12))
+                    .foregroundStyle(t.onSurfaceVariant)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isPressed ? t.primary.opacity(0.3) : (isHovering ? t.primary.opacity(0.15) : Color.clear))
+        )
+        .scaleEffect(isPressed ? 0.95 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .onTapGesture {
+            isPressed = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                isPressed = false
+                // Add tiny delay before action so animation completes visibly
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    engine.playUpcoming(at: index)
+                }
+            }
+        }
+    }
 }

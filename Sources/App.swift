@@ -11,6 +11,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidBecomeActive(_ notification: Notification) {
         NSApp.keyWindow?.makeKeyAndOrderFront(nil)
     }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            // Show existing main window instead of creating a new one
+            NSApp.windows.first { !($0 is NSPanel) }?.makeKeyAndOrderFront(nil)
+            return false
+        }
+        return true
+    }
 }
 
 @main

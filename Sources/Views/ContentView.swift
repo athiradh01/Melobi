@@ -33,51 +33,7 @@ enum SortOption: String, CaseIterable {
     case duration = "Duration"
 }
 
-// MARK: - Theme Manager
-@MainActor
-@Observable
-final class ThemeManager {
-    static let shared = ThemeManager()
-    
-    private static let schemeKey = "app.themeScheme"
-    private static let lightThemeKey = "app.lightTheme"
-    
-    var overrideScheme: ColorScheme? {
-        didSet { saveScheme() }
-    }
-    var activeLightTheme: LightThemeOption {
-        didSet { UserDefaults.standard.set(activeLightTheme.rawValue, forKey: Self.lightThemeKey) }
-    }
-    
-    private init() {
-        // Restore light theme
-        if let raw = UserDefaults.standard.string(forKey: Self.lightThemeKey),
-           let theme = LightThemeOption(rawValue: raw) {
-            activeLightTheme = theme
-        } else {
-            activeLightTheme = .mintBreeze
-        }
-        // Restore dark/light override
-        let schemeRaw = UserDefaults.standard.integer(forKey: Self.schemeKey)
-        switch schemeRaw {
-        case 1:  overrideScheme = .light
-        case 2:  overrideScheme = .dark
-        default: overrideScheme = nil
-        }
-    }
-    
-    private func saveScheme() {
-        switch overrideScheme {
-        case .light:   UserDefaults.standard.set(1, forKey: Self.schemeKey)
-        case .dark:    UserDefaults.standard.set(2, forKey: Self.schemeKey)
-        default:       UserDefaults.standard.set(0, forKey: Self.schemeKey)
-        }
-    }
-    
-    func toggle(current: ColorScheme) {
-        overrideScheme = current == .dark ? .light : .dark
-    }
-}
+
 
 // MARK: - Main Content View
 struct ContentView: View {
@@ -93,7 +49,7 @@ struct ContentView: View {
     let db: DatabasePool
     
     private var activeScheme: ColorScheme { themeManager.overrideScheme ?? systemScheme }
-    private var t: Theme { Theme(scheme: activeScheme, lightPalette: themeManager.activeLightTheme.theme) }
+    private var t: Theme { Theme(scheme: activeScheme, lightPalette: themeManager.activeLightTheme.theme, darkPalette: themeManager.activeDarkTheme.theme) }
     
     /// Sorted tracks matching the library's current display order
     private var sortedTracks: [Track] {
@@ -115,10 +71,16 @@ struct ContentView: View {
             sidebar
             
             ZStack(alignment: .bottom) {
+                // Luminous Audio ambient gradient blobs
+                if t.isGlassmorphic {
+                    ambientBlobs
+                }
+                
                 // Main content — instant section switch, child animations preserved
                 mainContent
                     .animation(.none, value: section)
-                    .background(t.background)
+                    .background(t.isGlassmorphic ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial.opacity(0)))
+                    .background(t.isGlassmorphic ? Color.clear : t.background)
                 
                 if engine.currentTrack != nil || engine.currentAudiobook != nil {
                     if !engine.isNowPlayingViewActive || engine.currentAudiobook == nil {
@@ -128,9 +90,13 @@ struct ContentView: View {
                     }
                 }
             }
+            .background(t.isGlassmorphic ? Color.clear : Color.clear)
+            .background(.ultraThinMaterial)
             .background(t.background)
 
         }
+        .background(t.isGlassmorphic ? Color.clear : Color.clear)
+        .background(.ultraThinMaterial)
         .background(t.background)
         .preferredColorScheme(themeManager.overrideScheme)
         .environment(library)
@@ -139,20 +105,69 @@ struct ContentView: View {
         .id(themeManager.activeLightTheme)
     }
     
+    // MARK: - Ambient Gradient Blobs (for Luminous Audio)
+    private var ambientBlobs: some View {
+        ZStack {
+            // Electric Violet blob — top-left
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [t.primaryContainer.opacity(0.35), Color.clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 250
+                    )
+                )
+                .frame(width: 500, height: 500)
+                .offset(x: -180, y: -120)
+                .blur(radius: 60)
+            
+            // Cyan blob — bottom-right
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [t.secondary.opacity(0.15), Color.clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 200
+                    )
+                )
+                .frame(width: 400, height: 400)
+                .offset(x: 250, y: 200)
+                .blur(radius: 50)
+            
+            // Pink accent blob — center-bottom
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [t.tertiary.opacity(0.08), Color.clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 150
+                    )
+                )
+                .frame(width: 300, height: 300)
+                .offset(x: 50, y: 280)
+                .blur(radius: 40)
+        }
+        .allowsHitTesting(false)
+    }
+    
     // MARK: - Sidebar (no Import Folder)
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(themeManager.activeLightTheme.rawValue)
+                Text(activeScheme == .dark ? themeManager.activeDarkTheme.rawValue : themeManager.activeLightTheme.rawValue)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(t.onSurface)
                     .tracking(-0.5)
                     .lineLimit(1)
-                Text("THE ETHEREAL GALLERY")
+                Text(t.isGlassmorphic ? "LUMINOUS AUDIO" : "THE ETHEREAL GALLERY")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(t.outlineVariant)
+                    .foregroundStyle(t.isGlassmorphic ? t.primary.opacity(0.6) : t.outlineVariant)
                     .tracking(2)
                     .lineLimit(1)
+                    .shadow(color: t.isGlassmorphic ? t.primaryContainer.opacity(0.5) : Color.clear, radius: 8)
             }
             .padding(.horizontal, 20)
             .padding(.top, 28)
@@ -180,8 +195,29 @@ struct ContentView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .contentShape(Rectangle())
-                        .background(section == sec ? t.surfaceContainer : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .background {
+                            if section == sec {
+                                if t.isGlassmorphic {
+                                    // Glass card with glow for Luminous Audio
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(Color.white.opacity(0.08))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        colors: [Color.white.opacity(0.2), Color.white.opacity(0.05)],
+                                                        startPoint: .top, endPoint: .bottom
+                                                    ),
+                                                    lineWidth: 1
+                                                )
+                                        )
+                                        .shadow(color: t.primaryContainer.opacity(0.15), radius: 12, x: 0, y: 0)
+                                } else {
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(t.surfaceContainer)
+                                }
+                            }
+                        }
                     }
                     .buttonStyle(.plain)
                 }
@@ -208,14 +244,26 @@ struct ContentView: View {
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .frame(width: 32, height: 32)
-                    .background(t.surfaceContainerHigh.opacity(0.5))
+                    .background(
+                        t.isGlassmorphic
+                            ? AnyShapeStyle(Color.white.opacity(0.06))
+                            : AnyShapeStyle(t.surfaceContainerHigh.opacity(0.5))
+                    )
                     .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
                 
-                // Theme Palette Selector (only visible in Light Mode)
-                if activeScheme != .dark {
-                    Menu {
+                // Theme Palette Selector (dynamically changes based on active mode)
+                Menu {
+                    if activeScheme == .dark {
+                        ForEach(DarkThemeOption.allCases) { option in
+                            Button(option.rawValue) {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    themeManager.activeDarkTheme = option
+                                }
+                            }
+                        }
+                    } else {
                         ForEach(LightThemeOption.allCases) { option in
                             Button(option.rawValue) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -223,25 +271,45 @@ struct ContentView: View {
                                 }
                             }
                         }
-                    } label: {
-                        Text(themeManager.activeLightTheme.rawValue)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(t.primary)
-                            .padding(.horizontal, 10)
-                            .frame(height: 32)
-                            .background(t.surfaceContainerHigh.opacity(0.5))
-                            .clipShape(Capsule())
                     }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
+                } label: {
+                    Text(activeScheme == .dark ? themeManager.activeDarkTheme.rawValue : themeManager.activeLightTheme.rawValue)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(t.primary)
+                        .padding(.horizontal, 10)
+                        .frame(height: 32)
+                        .background(
+                            t.isGlassmorphic
+                                ? AnyShapeStyle(Color.white.opacity(0.06))
+                                : AnyShapeStyle(t.surfaceContainerHigh.opacity(0.5))
+                        )
+                        .clipShape(Capsule())
                 }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
         }
         .frame(minWidth: 150, idealWidth: 230, maxWidth: 230)
-        .background(.ultraThinMaterial)
-        .background(t.sidebarBg)
+        .background {
+            if t.isGlassmorphic {
+                // Glass sidebar with subtle violet gradient bleed
+                ZStack {
+                    Color.black.opacity(0.5)
+                    LinearGradient(
+                        colors: [t.primaryContainer.opacity(0.08), Color.clear],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                }
+                .background(.ultraThinMaterial)
+            } else {
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    t.sidebarBg
+                }
+            }
+        }
     }
     
     // MARK: - Search helpers

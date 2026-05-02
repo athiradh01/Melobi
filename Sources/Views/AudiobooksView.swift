@@ -136,9 +136,9 @@ struct AudiobooksView: View {
                                             Image(systemName: "play.fill").font(.system(size: 12))
                                             Text("Play").font(.system(size: 12, weight: .bold))
                                         }
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(colorScheme == .light ? t.primary : t.onPrimary)
                                         .padding(.horizontal, 20).padding(.vertical, 9)
-                                        .background(t.primary)
+                                        .background(colorScheme == .light ? t.primaryContainer.opacity(0.2) : t.primary)
                                         .clipShape(Capsule())
                                     }
                                     .buttonStyle(.plain)
