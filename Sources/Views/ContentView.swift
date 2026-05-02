@@ -240,9 +240,19 @@ struct ContentView: View {
                         }
                     } label: {
                         HStack(spacing: 10) {
-                            Image(systemName: "music.note.list")
-                                .font(.system(size: 13))
-                                .frame(width: 20)
+                            let coverPath = library.playlistCoverArtwork(playlist, db: db)
+                            if let path = coverPath {
+                                ArtworkView(path: path, size: 20, cornerRadius: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .fill(LinearGradient(colors: [t.primaryContainer.opacity(0.6), t.primary.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .frame(width: 20, height: 20)
+                                    .overlay(
+                                        Image(systemName: "music.note.list")
+                                            .font(.system(size: 8, weight: .medium))
+                                            .foregroundStyle(.white.opacity(0.6))
+                                    )
+                            }
                             Text(playlist.name)
                                 .font(.system(size: 12, weight: (section == .playlists && selectedPlaylist?.id == playlist.id) ? .bold : .medium))
                                 .lineLimit(1)
