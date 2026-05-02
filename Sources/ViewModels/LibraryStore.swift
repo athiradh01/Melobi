@@ -424,6 +424,11 @@ public final class LibraryStore {
     
     /// Returns the artwork path from the first track in the playlist (used as a fallback cover).
     public func playlistCoverArtwork(_ playlist: Playlist, db: DatabasePool) -> String? {
+        // Use custom cover art if set
+        if let custom = playlist.artworkPath, !custom.isEmpty {
+            return custom
+        }
+        // Fall back to first track's artwork
         guard let pid = playlist.id else { return nil }
         return try? db.read { conn in
             try String.fetchOne(conn,
@@ -436,6 +441,20 @@ public final class LibraryStore {
                 """,
                 arguments: [pid]
             )
+        }
+    }
+    
+    public func setPlaylistCoverArt(_ playlist: Playlist, path: String?, db: DatabasePool) {
+        guard let pid = playlist.id else { return }
+        do {
+            try db.write { conn in
+                try conn.execute(
+                    sql: "UPDATE playlist SET artworkPath = ?, updatedAt = ? WHERE id = ?",
+                    arguments: [path, Date(), pid]
+                )
+            }
+        } catch {
+            print("[LibraryStore] Failed to set playlist cover art: \(error)")
         }
     }
     

@@ -1,5 +1,7 @@
 import SwiftUI
 import GRDB
+import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - Liked Songs View
 struct LikedSongsView: View {
@@ -319,6 +321,7 @@ struct PlaylistDetailView: View {
     
     @State private var tracks: [Track] = []
     @State private var showAddTracksSheet = false
+    @State private var coverHovered = false
 
     @State private var sortBy: String = "order"
     
@@ -363,8 +366,22 @@ struct PlaylistDetailView: View {
                             .frame(width: 72, height: 72)
                             .overlay(Image(systemName: "music.note.list").font(.system(size: 24, weight: .light)).foregroundStyle(.white.opacity(0.5)))
                     }
+                    
+                    // Hover overlay for changing cover
+                    if coverHovered {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(.black.opacity(0.45))
+                            .frame(width: 72, height: 72)
+                            .overlay(
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.white.opacity(0.9))
+                            )
+                    }
                 }
                 .shadow(color: t.primary.opacity(0.2), radius: 10, y: 3)
+                .onHover { coverHovered = $0 }
+                .onTapGesture { pickCoverArt() }
                 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(playlist.name)
@@ -491,6 +508,23 @@ struct PlaylistDetailView: View {
             library.toggleLike(trackId: tid, db: db)
         } label: {
             Label(isLiked ? "Unlike" : "Like", systemImage: isLiked ? "heart.slash" : "heart")
+        }
+    }
+    
+    private func pickCoverArt() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Cover Art"
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK, let url = panel.url {
+            // Copy image to app support directory for persistence
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let coversDir = appSupport.appendingPathComponent("Resonance/PlaylistCovers", isDirectory: true)
+            try? FileManager.default.createDirectory(at: coversDir, withIntermediateDirectories: true)
+            let destURL = coversDir.appendingPathComponent("\(playlist.id ?? 0)_\(Int(Date().timeIntervalSince1970)).\(url.pathExtension)")
+            try? FileManager.default.copyItem(at: url, to: destURL)
+            library.setPlaylistCoverArt(playlist, path: destURL.path, db: db)
         }
     }
 }
