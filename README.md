@@ -4,11 +4,12 @@
 
 ## ✨ Features
 
-- **Blazing Fast Local Library:** Powered by `GRDB` (SQLite), Resonance effortlessly scans your local folders, extracts metadata, and categorizes your library into Music and Audiobooks.
-- **Advanced Audiobook Support:** Natively parses `.m4b` and `.mp4b` chapters, displays a dedicated chapter panel, and automatically persists your listening position so you can resume exactly where you left off.
-- **Power-User Keyboard Navigation:** Navigate the entire UI—from the library search, to the playback controls, to the playlist management—without ever touching a mouse.
-- **Modern Apple UI:** Built entirely in latest SwiftUI with dynamic design tokens, responsive layouts, blurred backgrounds, and a high-fidelity "Now Playing" experience.
-- **Under-the-hood:** Driven by Swift 6 Concurrency and AVFoundation for zero-latency playback, efficient background scanning, and robust audio routing.
+- **Blazing Fast Local Library:** Powered by `GRDB` (SQLite), Resonance effortlessly scans your local folders, extracts metadata, and categorizes your library into Music and Audiobooks with persistent SQLite state.
+- **Custom Playlists & Ordering:** Complete manual control over your Liked Songs and Playlists. Use drag-and-drop to rearrange your playback sequence with full database persistence across restarts.
+- **Advanced Audiobook Support:** Natively parses `.m4b` and `.mp4b` chapters, displays a dedicated chapter panel, and automatically persists your listening position.
+- **Dedicated Settings Panel:** Native in-app settings to manage appearance (Light/Dark/System theme override) and view application info.
+- **Modern Apple UI & Luminous Design:** Built in latest SwiftUI with glassmorphic design tokens, dynamic ambient gradients, and a high-fidelity "Now Playing" experience.
+- **Smart Interaction:** Playback controls that appear on hover for playlists, enhanced drag-and-drop visuals showing full track details, and keyboard-centric navigation.
 
 ## 🛠 Tech Stack
 
