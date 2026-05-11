@@ -4,12 +4,21 @@
 
 ## ✨ Features
 
-- **Blazing Fast Local Library:** Powered by `GRDB` (SQLite), Resonance effortlessly scans your local folders, extracts metadata, and categorizes your library into Music and Audiobooks with persistent SQLite state.
-- **Custom Playlists & Ordering:** Complete manual control over your Liked Songs and Playlists. Use drag-and-drop to rearrange your playback sequence with full database persistence across restarts.
-- **Advanced Audiobook Support:** Natively parses `.m4b` and `.mp4b` chapters, displays a dedicated chapter panel, and automatically persists your listening position.
-- **Dedicated Settings Panel:** Native in-app settings to manage appearance (Light/Dark/System theme override) and view application info.
-- **Modern Apple UI & Luminous Design:** Built in latest SwiftUI with glassmorphic design tokens, dynamic ambient gradients, and a high-fidelity "Now Playing" experience.
-- **Smart Interaction:** Playback controls that appear on hover for playlists, enhanced drag-and-drop visuals showing full track details, and keyboard-centric navigation.
+- **Blazing Fast Local Library:** Powered by `GRDB` (SQLite), Resonance effortlessly scans local folders, extracts metadata, and categorizes your library into Music and Audiobooks with persistent SQLite state and zero-latency searching.
+- **Custom Playlists & Ordering:** Full manual control over Liked Songs and Playlists. Use drag-and-drop to rearrange your sequence with persistent database ordering.
+- **Real-time Lyrics (Velvet Echo):** Integrated lyrics engine with support for real-time synchronization, auto-scrolling, and multiple lyric variants.
+- **Advanced Audiobook Support:** Native `.m4b` parsing with chapter navigation, dedicated progress tracking, and automatic "resume where you left off" persistence.
+- **Private Vaults:** Securely organize your audio content with the ability to create and manage Private Vaults directly from the overview.
+- **Shuffle Play Everywhere:** Native "Shuffle Play" functionality integrated into every playlist and the Liked Songs library.
+- **Luminous Glassmorphic UI:** A premium macOS experience featuring:
+    - Dynamic ambient gradient "blobs" that respond to the active theme.
+    - Glassmorphic sidebar with blurred backgrounds and sleek navigation.
+    - Interactive "Now Playing" bar with cinematic artwork blurs.
+- **Smart Interface Modifiers:**
+    - **Hover Actions:** Playback controls that appear only when needed.
+    - **Live Dragging:** See the entire horizontal track bar move as you reorder songs.
+    - **Collapsible Sidebar:** A cleaner sidebar that keeps your playlist list tucked away until you need it.
+- **Native Settings Panel:** Toggle between curated theme palettes (Electric Violet, Cyan, etc.) and manage system-wide appearance overrides.
 
 ## 🛠 Tech Stack
 
