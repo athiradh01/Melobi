@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import AudioToolbox
 import Observation
 
 @MainActor
@@ -13,12 +14,21 @@ public final class AudioEngine: NSObject {
     public var currentTime: TimeInterval = 0
     public var duration: TimeInterval = 0
     public var isNowPlayingViewActive = false
+    
     public var volume: Float = 1.0 {
-        didSet { player?.volume = volume }
+        didSet {
+            player?.volume = volume
+            playerNode.volume = volume
+        }
     }
+    
     public var playbackRate: Float = 1.0 {
-        didSet { player?.rate = isPlaying ? playbackRate : 0 }
+        didSet {
+            player?.rate = isPlaying ? playbackRate : 0
+            timePitchNode.rate = playbackRate
+        }
     }
+    
     public var isShuffleOn = false {
         didSet {
             if isShuffleOn {
@@ -43,7 +53,6 @@ public final class AudioEngine: NSObject {
         }
     }
     public var error: String?
-    
     public var shuffledIndices: [Int] = []
     
     private func generateShuffleQueue() {
@@ -57,13 +66,9 @@ public final class AudioEngine: NSObject {
         shuffledIndices = indices
     }
     
-    /// Called when an audiobook's last chapter finishes playing. Receives (audiobook, lastChapterIndex).
     public var onChapterCompleted: ((Audiobook, Int) -> Void)?
-    
-    /// Called whenever a new track is loaded, with the file path. Use for lyrics auto-load.
     public var onTrackChanged: ((String) -> Void)?
     
-    // Audiobook chapter support
     public var chapters: [Chapter] = []
     
     public var currentChapter: Chapter? {
@@ -94,72 +99,154 @@ public final class AudioEngine: NSObject {
         return max(0, nextStart - currentStart)
     }
     
+    // MARK: - Playback Engines
+    
+    // AVPlayer (for EQ Off / Audiobooks)
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     
-    /// History of queue indices played during shuffle, so Previous can retrace.
+    // AVAudioEngine (for EQ Presets)
+    private let engine = AVAudioEngine()
+    private let playerNode = AVAudioPlayerNode()
+    private let timePitchNode = AVAudioUnitTimePitch()
+    public let eqNode = AVAudioUnitEQ(numberOfBands: 6)
+    public let limiterNode = AVAudioUnitEffect(audioComponentDescription: AudioComponentDescription(
+        componentType: kAudioUnitType_Effect,
+        componentSubType: kAudioUnitSubType_PeakLimiter,
+        componentManufacturer: kAudioUnitManufacturer_Apple,
+        componentFlags: 0,
+        componentFlagsMask: 0
+    ))
+    private var engineTimer: Timer?
+    private var activeAudioFile: AVAudioFile?
+    private var engineSeekTime: TimeInterval = 0
+    private var isEngineScheduled = false
+    
+    public var useEQEngine: Bool = false {
+        didSet {
+            guard oldValue != useEQEngine else { return }
+            switchEngines(to: useEQEngine)
+        }
+    }
+    
     private var shuffleHistory: [Int] = []
     private var isGoingBack = false
     
     private override init() {
         super.init()
+        setupEngine()
     }
     
-    public func load(track: Track) {
-        let url = URL(fileURLWithPath: track.filePath)
-        guard FileManager.default.fileExists(atPath: track.filePath) else {
-            error = "File not found: \(track.filePath)"
-            return
+    // MARK: - EQ Setup
+    private func setupEngine() {
+        engine.attach(playerNode)
+        engine.attach(timePitchNode)
+        engine.attach(eqNode)
+        engine.attach(limiterNode)
+        
+        // kLimiterParam_PreGain is 0
+        AudioUnitSetParameter(limiterNode.audioUnit, 0, kAudioUnitScope_Global, 0, -3.0, 0)
+        
+        // Frequencies for our 6-band EQ
+        let frequencies: [Float] = [60, 230, 910, 3600, 14000, 20000]
+        for i in 0..<eqNode.bands.count {
+            let band = eqNode.bands[i]
+            band.filterType = .parametric
+            band.frequency = frequencies[i]
+            band.bandwidth = 1.0
+            band.gain = 0.0
+            band.bypass = false
         }
-        cleanup()
-        let item = AVPlayerItem(url: url)
-        player = AVPlayer(playerItem: item)
-        player?.volume = volume
+        
+        engine.connect(playerNode, to: eqNode, format: nil)
+        engine.connect(eqNode, to: limiterNode, format: nil)
+        engine.connect(limiterNode, to: timePitchNode, format: nil)
+        engine.connect(timePitchNode, to: engine.mainMixerNode, format: nil)
+    }
+    
+    public func setEQGains(_ gains: [Float]) {
+        for (i, gain) in gains.enumerated() {
+            if i < eqNode.bands.count {
+                eqNode.bands[i].gain = gain
+            }
+        }
+    }
+    
+    // MARK: - Engine Switching
+    private func switchEngines(to useEngine: Bool) {
+        let savedTime = currentTime
+        let wasPlaying = isPlaying
+        
+        if useEngine {
+            // Stop AVPlayer
+            player?.pause()
+            cleanupPlayer()
+            
+            // Start Engine
+            if let track = currentTrack {
+                loadEngine(track: track, resumePosition: savedTime)
+                if wasPlaying { playEngine() }
+            }
+        } else {
+            // Stop Engine
+            stopEngine()
+            
+            // Start AVPlayer
+            if let track = currentTrack {
+                loadPlayer(track: track, resumePosition: savedTime)
+                if wasPlaying { playPlayer() }
+            } else if let book = currentAudiobook {
+                // Audiobooks always use AVPlayer
+                loadPlayer(audiobook: book, resumePosition: savedTime, chapters: self.chapters)
+                if wasPlaying { playPlayer() }
+            }
+        }
+    }
+    
+    // MARK: - Core Controls
+    
+    public func load(track: Track) {
         currentTrack = track
         currentAudiobook = nil
         duration = Double(track.durationMs ?? 0) / 1000.0
         currentTime = 0
         error = nil
-        setupObservers()
+        
+        if useEQEngine {
+            loadEngine(track: track, resumePosition: 0)
+        } else {
+            loadPlayer(track: track, resumePosition: 0)
+        }
         onTrackChanged?(track.filePath)
     }
     
     public func load(audiobook: Audiobook, resumePosition: Double = 0, chapters: [Chapter] = []) {
-        let url = URL(fileURLWithPath: audiobook.filePath)
-        guard FileManager.default.fileExists(atPath: audiobook.filePath) else {
-            error = "File not found: \(audiobook.filePath)"
-            return
-        }
-        cleanup()
-        let item = AVPlayerItem(url: url)
-        player = AVPlayer(playerItem: item)
-        player?.volume = volume
+        // Audiobooks ALWAYS use AVPlayer for reliability with chapters and long durations
+        useEQEngine = false 
+        
         currentAudiobook = audiobook
         currentTrack = nil
         self.chapters = chapters
         duration = Double(audiobook.durationMs ?? 0) / 1000.0
         currentTime = resumePosition
         error = nil
-        if resumePosition > 0 {
-            player?.seek(to: CMTime(seconds: resumePosition, preferredTimescale: 600))
-        }
-        setupObservers()
+        
+        loadPlayer(audiobook: audiobook, resumePosition: resumePosition, chapters: chapters)
     }
     
     public func play() {
-        player?.playImmediately(atRate: playbackRate)
+        useEQEngine ? playEngine() : playPlayer()
         isPlaying = true
     }
     
     public func pause() {
-        player?.pause()
+        useEQEngine ? pauseEngine() : pausePlayer()
         isPlaying = false
     }
     
     public func stop() {
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
+        useEQEngine ? stopEngine() : stopPlayer()
         isPlaying = false
         currentTrack = nil
         currentTime = 0
@@ -172,8 +259,215 @@ public final class AudioEngine: NSObject {
     
     public func seek(to time: TimeInterval) {
         let t = max(0, min(time, duration))
-        player?.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        if useEQEngine {
+            seekEngine(to: t)
+        } else {
+            seekPlayer(to: t)
+        }
         currentTime = t
+    }
+    
+    // MARK: - AVPlayer Implementation
+    
+    private func loadPlayer(track: Track, resumePosition: TimeInterval) {
+        let url = URL(fileURLWithPath: track.filePath)
+        guard FileManager.default.fileExists(atPath: track.filePath) else {
+            error = "File not found: \(track.filePath)"
+            return
+        }
+        cleanupPlayer()
+        let item = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: item)
+        player?.volume = volume
+        if resumePosition > 0 {
+            player?.seek(to: CMTime(seconds: resumePosition, preferredTimescale: 600))
+        }
+        setupPlayerObservers()
+    }
+    
+    private func loadPlayer(audiobook: Audiobook, resumePosition: TimeInterval, chapters: [Chapter]) {
+        let url = URL(fileURLWithPath: audiobook.filePath)
+        guard FileManager.default.fileExists(atPath: audiobook.filePath) else {
+            error = "File not found: \(audiobook.filePath)"
+            return
+        }
+        cleanupPlayer()
+        let item = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: item)
+        player?.volume = volume
+        if resumePosition > 0 {
+            player?.seek(to: CMTime(seconds: resumePosition, preferredTimescale: 600))
+        }
+        setupPlayerObservers()
+    }
+    
+    private func playPlayer() {
+        player?.playImmediately(atRate: playbackRate)
+    }
+    
+    private func pausePlayer() {
+        player?.pause()
+    }
+    
+    private func stopPlayer() {
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+    }
+    
+    private func seekPlayer(to time: TimeInterval) {
+        player?.seek(to: CMTime(seconds: time, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+    
+    private func setupPlayerObservers() {
+        let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            Task { @MainActor in
+                guard let self else { return }
+                // Only update if EQ is off (avoid conflicts)
+                guard !self.useEQEngine else { return }
+                
+                let t = time.seconds
+                if t.isFinite { self.currentTime = t }
+                if let dur = self.player?.currentItem?.duration.seconds, dur.isFinite && dur > 0 {
+                    self.duration = dur
+                }
+            }
+        }
+        
+        endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                guard !self.useEQEngine else { return }
+                self.handlePlaybackEnd()
+            }
+        }
+    }
+    
+    private func cleanupPlayer() {
+        if let obs = timeObserver { player?.removeTimeObserver(obs) }
+        if let end = endObserver { NotificationCenter.default.removeObserver(end) }
+        timeObserver = nil
+        endObserver = nil
+        player = nil
+    }
+    
+    // MARK: - AVAudioEngine Implementation
+    
+    private func loadEngine(track: Track, resumePosition: TimeInterval) {
+        let url = URL(fileURLWithPath: track.filePath)
+        guard FileManager.default.fileExists(atPath: track.filePath),
+              let file = try? AVAudioFile(forReading: url) else {
+            error = "File not found or unreadable: \(track.filePath)"
+            return
+        }
+        
+        activeAudioFile = file
+        playerNode.stop()
+        
+        if !engine.isRunning {
+            try? engine.start()
+        }
+        
+        engineSeekTime = resumePosition
+        scheduleEngineSegment(from: resumePosition)
+        setupEngineTimer()
+    }
+    
+    private func scheduleEngineSegment(from time: TimeInterval) {
+        guard let file = activeAudioFile else { return }
+        
+        let sampleRate = file.processingFormat.sampleRate
+        let startFrame = AVAudioFramePosition(time * sampleRate)
+        let totalFrames = AVAudioFramePosition(file.length)
+        let framesToPlay = AVAudioFrameCount(max(0, totalFrames - startFrame))
+        
+        playerNode.stop()
+        
+        if framesToPlay > 0 {
+            playerNode.scheduleSegment(file, startingFrame: startFrame, frameCount: framesToPlay, at: nil) { [weak self] in
+                Task { @MainActor in
+                    guard let self else { return }
+                    // Engine playback finished
+                    // Note: completion is called even when stopped manually, so we check if it actually reached the end
+                    let expectedDuration = Double(framesToPlay) / sampleRate
+                    let actualPlayed = self.currentTime - self.engineSeekTime
+                    if actualPlayed >= expectedDuration - 0.5 {
+                        self.handlePlaybackEnd()
+                    }
+                }
+            }
+            isEngineScheduled = true
+        }
+    }
+    
+    private func playEngine() {
+        if !engine.isRunning { try? engine.start() }
+        if !isEngineScheduled {
+            scheduleEngineSegment(from: currentTime)
+        }
+        playerNode.play()
+    }
+    
+    private func pauseEngine() {
+        playerNode.pause()
+    }
+    
+    private func stopEngine() {
+        playerNode.stop()
+        isEngineScheduled = false
+        engineTimer?.invalidate()
+        engineTimer = nil
+    }
+    
+    private func seekEngine(to time: TimeInterval) {
+        engineSeekTime = time
+        let wasPlaying = playerNode.isPlaying
+        playerNode.stop()
+        scheduleEngineSegment(from: time)
+        if wasPlaying {
+            playerNode.play()
+        }
+    }
+    
+    private func setupEngineTimer() {
+        engineTimer?.invalidate()
+        engineTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.useEQEngine, self.isPlaying, self.playerNode.isPlaying else { return }
+                
+                if let nodeTime = self.playerNode.lastRenderTime,
+                   let playerTime = self.playerNode.playerTime(forNodeTime: nodeTime) {
+                    let elapsed = Double(playerTime.sampleTime) / playerTime.sampleRate
+                    self.currentTime = self.engineSeekTime + elapsed
+                }
+            }
+        }
+    }
+    
+    // MARK: - Shared Playback Logic
+    
+    private func handlePlaybackEnd() {
+        switch repeatMode {
+        case .one:
+            seek(to: 0)
+            play()
+        case .all:
+            next(wrap: true)
+        case .none:
+            if currentAudiobook != nil {
+                if let lastChapterIdx = currentChapterIndex, let book = currentAudiobook {
+                    onChapterCompleted?(book, lastChapterIdx)
+                }
+                isPlaying = false
+            } else if isShuffleOn {
+                next(wrap: false)
+            } else if currentQueueIndex + 1 < queue.count {
+                next(wrap: false)
+            } else {
+                isPlaying = false
+            }
+        }
     }
     
     public func playUpcoming(at upcomingIndex: Int) {
@@ -209,7 +503,6 @@ public final class AudioEngine: NSObject {
     
     public func next(wrap: Bool = true) {
         guard !queue.isEmpty else { return }
-        // Record current position in shuffle history before moving forward
         if isShuffleOn && !isGoingBack {
             shuffleHistory.append(currentQueueIndex)
             if shuffleHistory.count > 200 { shuffleHistory.removeFirst() }
@@ -237,7 +530,6 @@ public final class AudioEngine: NSObject {
             } else if wrap {
                 nextIndex = 0
             } else {
-                // End of queue and wrap is disabled - just stop
                 isPlaying = false
                 return
             }
@@ -259,13 +551,11 @@ public final class AudioEngine: NSObject {
         if currentTime > 3 {
             seek(to: 0)
         } else if isShuffleOn, let lastIndex = shuffleHistory.popLast() {
-            // Go back to the exact song we came from during shuffle
             isGoingBack = true
             currentQueueIndex = lastIndex
             load(track: queue[currentQueueIndex])
             play()
         } else {
-            // Normal sequential backwards
             currentQueueIndex = (currentQueueIndex - 1 + queue.count) % queue.count
             load(track: queue[currentQueueIndex])
             play()
@@ -274,10 +564,8 @@ public final class AudioEngine: NSObject {
     
     // MARK: - Audiobook Chapter Navigation
     
-    /// Seek to the next chapter, or do nothing if already at the last.
     public func nextChapter() {
         guard !chapters.isEmpty else {
-            // No chapters — skip forward 30 s
             seek(to: min(currentTime + 30, duration))
             return
         }
@@ -287,22 +575,17 @@ public final class AudioEngine: NSObject {
         }
     }
     
-    /// Seek to the start of the current chapter; if within 3 s of its start, go to previous.
     public func previousChapter() {
         guard !chapters.isEmpty else {
-            // No chapters — skip back 30 s
             seek(to: max(0, currentTime - 30))
             return
         }
         let ms = Int64(currentTime * 1000)
-        // Current chapter = last chapter whose start <= currentTime
         if let idx = chapters.indices.last(where: { chapters[$0].startTimeMs <= ms }) {
             let chStart = Double(chapters[idx].startTimeMs) / 1000.0
             if currentTime - chStart > 3 {
-                // Restart current chapter
                 seek(to: chStart)
             } else if idx > 0 {
-                // Go to previous chapter
                 seek(to: Double(chapters[idx - 1].startTimeMs) / 1000.0)
             } else {
                 seek(to: 0)
@@ -312,71 +595,12 @@ public final class AudioEngine: NSObject {
         }
     }
     
-    /// Skip forward by `seconds` seconds (clamped to duration).
     public func skipForward(_ seconds: Double = 10) {
         seek(to: min(currentTime + seconds, duration))
     }
     
-    /// Skip backward by `seconds` seconds (clamped to 0).
     public func skipBackward(_ seconds: Double = 10) {
         seek(to: max(currentTime - seconds, 0))
-    }
-    
-    private func setupObservers() {
-        // Time observer — 0.5s interval is smooth enough and much lighter
-        let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
-        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            Task { @MainActor in
-                guard let self else { return }
-                let t = time.seconds
-                if t.isFinite { self.currentTime = t }
-                // Update duration from item if we have it
-                if let dur = self.player?.currentItem?.duration.seconds, dur.isFinite && dur > 0 {
-                    self.duration = dur
-                }
-            }
-        }
-        
-        // End of track observer
-        endObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: player?.currentItem,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                switch self.repeatMode {
-                case .one:
-                    self.seek(to: 0)
-                    self.play()
-                case .all:
-                    self.next(wrap: true)
-                case .none:
-                    if self.currentAudiobook != nil {
-                        // Audiobook finished — mark last chapter completed
-                        if let lastChapterIdx = self.currentChapterIndex,
-                           let book = self.currentAudiobook {
-                            self.onChapterCompleted?(book, lastChapterIdx)
-                        }
-                        self.isPlaying = false
-                    } else if self.isShuffleOn {
-                        self.next(wrap: false)
-                    } else if self.currentQueueIndex + 1 < self.queue.count {
-                        self.next(wrap: false)
-                    } else {
-                        self.isPlaying = false
-                    }
-                }
-            }
-        }
-    }
-    
-    private func cleanup() {
-        if let obs = timeObserver { player?.removeTimeObserver(obs) }
-        if let end = endObserver { NotificationCenter.default.removeObserver(end) }
-        timeObserver = nil
-        endObserver = nil
-        player = nil
     }
 }
 

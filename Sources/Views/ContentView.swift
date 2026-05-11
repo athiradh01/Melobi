@@ -110,6 +110,7 @@ struct ContentView: View {
         .background(t.isGlassmorphic ? Color.clear : Color.clear)
         .background(.ultraThinMaterial)
         .background(t.background)
+        .ignoresSafeArea()
         .preferredColorScheme(themeManager.overrideScheme)
         .environment(library)
         .environment(engine)
@@ -185,7 +186,7 @@ struct ContentView: View {
                     .shadow(color: t.isGlassmorphic ? t.primaryContainer.opacity(0.5) : Color.clear, radius: 8)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 28)
+            .padding(.top, 50)
             .padding(.bottom, 24)
             
             // Nav items
