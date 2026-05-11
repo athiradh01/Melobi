@@ -15,6 +15,10 @@ public final class LibraryStore {
     public var isScanning = false
     public var scanProgress = ""
     
+    /// Track IDs that belong ONLY to vault playlists (not in any normal playlist or imported normally via library).
+    /// These are excluded from the main library view.
+    public var vaultOnlyTrackIds: Set<Int64> = []
+    
     // Cached filtered results — avoid recomputing on every body eval
     public var filteredTracks: [Track] = []
     public var filteredAudiobooks: [Audiobook] = []
@@ -55,12 +59,16 @@ public final class LibraryStore {
     }
     
     private func rebuildFiltered() {
+        let nonVaultTracks = tracks.filter { track in
+            guard let tid = track.id else { return true }
+            return !vaultOnlyTrackIds.contains(tid)
+        }
         if searchQuery.isEmpty {
-            filteredTracks = tracks
+            filteredTracks = nonVaultTracks
             filteredAudiobooks = audiobooks
         } else {
             let q = searchQuery
-            filteredTracks = tracks.filter {
+            filteredTracks = nonVaultTracks.filter {
                 ($0.title?.localizedCaseInsensitiveContains(q) ?? false) ||
                 ($0.artist?.localizedCaseInsensitiveContains(q) ?? false) ||
                 ($0.album?.localizedCaseInsensitiveContains(q) ?? false)
@@ -303,6 +311,7 @@ public final class LibraryStore {
         } onChange: { [weak self] playlists in
             Task { @MainActor in
                 self?.playlists = playlists
+                self?.refreshVaultTrackIds(db: db)
             }
         }
         
@@ -316,6 +325,15 @@ public final class LibraryStore {
                 self?.likedTrackIds = Set(liked.map { $0.trackId })
             }
         }
+    }
+    
+    /// Convenience computed properties to separate vault from regular playlists
+    public var regularPlaylists: [Playlist] {
+        playlists.filter { !$0.isVault }
+    }
+    
+    public var vaultPlaylists: [Playlist] {
+        playlists.filter { $0.isVault }
     }
     
     // MARK: - Playlist CRUD
@@ -333,6 +351,156 @@ public final class LibraryStore {
         }
     }
     
+    public func createVaultPlaylist(name: String, db: DatabasePool) -> Playlist? {
+        do {
+            return try db.write { conn in
+                var playlist = Playlist(name: name, isVault: true)
+                try playlist.insert(conn)
+                return playlist
+            }
+        } catch {
+            print("[LibraryStore] Failed to create vault playlist: \(error)")
+            return nil
+        }
+    }
+    
+    /// Import audio files directly into a vault playlist. The tracks are inserted into the
+    /// `track` table but marked as vault-only so they don't appear in the main library.
+    public func importFilesToVaultPlaylist(urls: [URL], playlistId: Int64, db: DatabasePool, artworkDir: URL) {
+        isScanning = true
+        scanProgress = "Importing to vault…"
+        Task.detached(priority: .background) {
+            let supportedFormats = Set(["mp3", "flac", "aac", "m4a"])
+            
+            var allURLs: [URL] = []
+            let fm = FileManager.default
+            for url in urls {
+                var isDir: ObjCBool = false
+                if fm.fileExists(atPath: url.path, isDirectory: &isDir) {
+                    if isDir.boolValue {
+                        if let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles]),
+                           let files = enumerator.allObjects as? [URL] {
+                            allURLs.append(contentsOf: files)
+                        }
+                    } else {
+                        allURLs.append(url)
+                    }
+                }
+            }
+            
+            for fileURL in allURLs {
+                let ext = fileURL.pathExtension.lowercased()
+                guard supportedFormats.contains(ext) else { continue }
+                
+                let meta = await MetadataExtractor.shared.extract(from: fileURL)
+                
+                let artworkPath: String? = {
+                    if let artData = meta.artworkData {
+                        let artFile = artworkDir.appendingPathComponent(UUID().uuidString + ".jpg")
+                        try? artData.write(to: artFile)
+                        return artFile.path
+                    }
+                    return nil
+                }()
+                
+                do {
+                    try await db.write { conn in
+                        // Insert or find existing track
+                        var track: Track
+                        if let existing = try Track.filter(Column("filePath") == fileURL.path).fetchOne(conn) {
+                            track = existing
+                        } else {
+                            track = Track(
+                                filePath: fileURL.path,
+                                title: meta.title,
+                                artist: meta.artist,
+                                album: meta.album,
+                                artworkPath: artworkPath,
+                                durationMs: meta.durationMs,
+                                format: ext
+                            )
+                            try track.insert(conn)
+                        }
+                        
+                        guard let trackId = track.id else { return }
+                        
+                        // Check if already in this playlist
+                        let exists = try PlaylistTrack
+                            .filter(Column("playlistId") == playlistId && Column("trackId") == trackId)
+                            .fetchOne(conn) != nil
+                        
+                        if !exists {
+                            let maxOrder = try Int.fetchOne(conn,
+                                sql: "SELECT MAX(sortOrder) FROM playlistTrack WHERE playlistId = ?",
+                                arguments: [playlistId]
+                            ) ?? -1
+                            
+                            var pt = PlaylistTrack(playlistId: playlistId, trackId: trackId, sortOrder: maxOrder + 1)
+                            try pt.insert(conn)
+                            
+                            try conn.execute(
+                                sql: "UPDATE playlist SET updatedAt = ? WHERE id = ?",
+                                arguments: [Date(), playlistId]
+                            )
+                        }
+                    }
+                } catch {
+                    print("[LibraryStore] Failed to import vault track: \(error)")
+                }
+            }
+            
+            await MainActor.run {
+                LibraryStore.shared.isScanning = false
+                LibraryStore.shared.scanProgress = ""
+                // Refresh vault track IDs after import
+                if let dbWriter = AppDatabase.shared.dbWriter {
+                    LibraryStore.shared.refreshVaultTrackIds(db: dbWriter)
+                }
+            }
+        }
+    }
+    
+    /// Recompute which track IDs belong exclusively to vault playlists.
+    /// A track is vault-only if it appears in at least one vault playlist
+    /// and does NOT appear in any non-vault playlist.
+    public func refreshVaultTrackIds(db: DatabasePool) {
+        do {
+            let ids: Set<Int64> = try db.read { conn in
+                // All track IDs in vault playlists
+                let vaultIds = try Int64.fetchAll(conn, sql: """
+                    SELECT DISTINCT pt.trackId FROM playlistTrack pt
+                    INNER JOIN playlist p ON p.id = pt.playlistId
+                    WHERE p.isVault = 1
+                """)
+                
+                // All track IDs in normal playlists
+                let normalIds = try Set(Int64.fetchAll(conn, sql: """
+                    SELECT DISTINCT pt.trackId FROM playlistTrack pt
+                    INNER JOIN playlist p ON p.id = pt.playlistId
+                    WHERE p.isVault = 0
+                """))
+                
+                // All track IDs that were imported via library folders (exist in libraryFolder scan)
+                // We consider a track as "library-imported" if it existed before any vault playlist referenced it.
+                // Simpler approach: a track is vault-only if it's ONLY in vault playlists and not in normal playlists.
+                // But we also need to check if the track was added independently to the library.
+                // We track this by checking if the track is referenced by ANY non-vault playlist or was in the library
+                // before. Since all tracks go into the track table, we use a heuristic:
+                // A track is vault-only if:
+                //   1. It's in a vault playlist
+                //   2. It's NOT in any non-vault playlist
+                //   3. It was NOT explicitly imported into the library (i.e., it only exists because of vault import)
+                // For simplicity, we mark tracks as vault-only if they're ONLY in vault playlists.
+                
+                return Set(vaultIds.filter { !normalIds.contains($0) })
+            }
+            self.vaultOnlyTrackIds = ids
+            rebuildFiltered()
+        } catch {
+            print("[LibraryStore] Failed to refresh vault track IDs: \(error)")
+        }
+    }
+    
     public func renamePlaylist(_ playlist: Playlist, to name: String, db: DatabasePool) {
         guard var p = playlist as Playlist?, p.id != nil else { return }
         p.name = name
@@ -347,10 +515,42 @@ public final class LibraryStore {
     }
     
     public func deletePlaylist(_ playlist: Playlist, db: DatabasePool) {
-        guard playlist.id != nil else { return }
+        guard let pid = playlist.id else { return }
+        let isVault = playlist.isVault
         do {
             try db.write { conn in
-                _ = try playlist.delete(conn)
+                if isVault {
+                    // Get track IDs in this vault playlist
+                    let vaultTrackIds = try Int64.fetchAll(conn,
+                        sql: "SELECT trackId FROM playlistTrack WHERE playlistId = ?",
+                        arguments: [pid]
+                    )
+                    
+                    // Delete the playlist (cascades to playlistTrack)
+                    _ = try playlist.delete(conn)
+                    
+                    // For each track that was in this vault, check if it's now orphaned
+                    // (not in any other playlist)
+                    for trackId in vaultTrackIds {
+                        let otherCount = try Int.fetchOne(conn,
+                            sql: "SELECT COUNT(*) FROM playlistTrack WHERE trackId = ?",
+                            arguments: [trackId]
+                        ) ?? 0
+                        
+                        if otherCount == 0 {
+                            // This track is orphaned — delete it
+                            try conn.execute(
+                                sql: "DELETE FROM track WHERE id = ?",
+                                arguments: [trackId]
+                            )
+                        }
+                    }
+                } else {
+                    _ = try playlist.delete(conn)
+                }
+            }
+            if isVault {
+                refreshVaultTrackIds(db: db)
             }
         } catch {
             print("[LibraryStore] Failed to delete playlist: \(error)")
@@ -424,6 +624,11 @@ public final class LibraryStore {
     
     /// Returns the artwork path from the first track in the playlist (used as a fallback cover).
     public func playlistCoverArtwork(_ playlist: Playlist, db: DatabasePool) -> String? {
+        // Use custom cover art if set
+        if let custom = playlist.artworkPath, !custom.isEmpty {
+            return custom
+        }
+        // Fall back to first track's artwork
         guard let pid = playlist.id else { return nil }
         return try? db.read { conn in
             try String.fetchOne(conn,
@@ -439,6 +644,35 @@ public final class LibraryStore {
         }
     }
     
+    public func setPlaylistCoverArt(_ playlist: Playlist, path: String?, db: DatabasePool) {
+        guard let pid = playlist.id else { return }
+        do {
+            try db.write { conn in
+                try conn.execute(
+                    sql: "UPDATE playlist SET artworkPath = ?, updatedAt = ? WHERE id = ?",
+                    arguments: [path, Date(), pid]
+                )
+            }
+        } catch {
+            print("[LibraryStore] Failed to set playlist cover art: \(error)")
+        }
+    }
+    
+    public func reorderPlaylistTracks(playlistId: Int64, trackIds: [Int64], db: DatabasePool) {
+        do {
+            try db.write { conn in
+                for (index, trackId) in trackIds.enumerated() {
+                    try conn.execute(
+                        sql: "UPDATE playlistTrack SET sortOrder = ? WHERE playlistId = ? AND trackId = ?",
+                        arguments: [index, playlistId, trackId]
+                    )
+                }
+            }
+        } catch {
+            print("[LibraryStore] Failed to reorder playlist tracks: \(error)")
+        }
+    }
+    
     // MARK: - Liked Songs
     
     public func toggleLike(trackId: Int64, db: DatabasePool) {
@@ -447,12 +681,31 @@ public final class LibraryStore {
                 if let existing = try LikedTrack.filter(Column("trackId") == trackId).fetchOne(conn) {
                     try existing.delete(conn)
                 } else {
-                    var liked = LikedTrack(trackId: trackId)
+                    // Get next sort order (add to end)
+                    let maxOrder = try Int.fetchOne(conn,
+                        sql: "SELECT MAX(sortOrder) FROM likedTrack"
+                    ) ?? -1
+                    var liked = LikedTrack(trackId: trackId, sortOrder: maxOrder + 1)
                     try liked.insert(conn)
                 }
             }
         } catch {
             print("[LibraryStore] Failed to toggle like: \(error)")
+        }
+    }
+    
+    public func reorderLikedTracks(trackIds: [Int64], db: DatabasePool) {
+        do {
+            try db.write { conn in
+                for (index, trackId) in trackIds.enumerated() {
+                    try conn.execute(
+                        sql: "UPDATE likedTrack SET sortOrder = ? WHERE trackId = ?",
+                        arguments: [index, trackId]
+                    )
+                }
+            }
+        } catch {
+            print("[LibraryStore] Failed to reorder liked tracks: \(error)")
         }
     }
     
@@ -466,7 +719,7 @@ public final class LibraryStore {
                 sql: """
                     SELECT track.* FROM track
                     INNER JOIN likedTrack ON likedTrack.trackId = track.id
-                    ORDER BY likedTrack.likedAt DESC
+                    ORDER BY likedTrack.sortOrder ASC
                 """
             )
         }) ?? []

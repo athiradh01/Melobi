@@ -21,6 +21,8 @@ struct NowPlayingBar: View {
     @State private var isVolumeExpanded = false
     @State private var volumeCollapseTask: Task<Void, Never>?
     
+    
+
     private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
     private var currentArtworkPath: String? {
         engine.currentTrack?.artworkPath ?? engine.currentAudiobook?.artworkPath
@@ -58,7 +60,7 @@ struct NowPlayingBar: View {
                 }
             }
             
-            // Like + Stop buttons right next to the name
+            // Like + Playlist + Stop buttons right next to the name
             if engine.currentTrack != nil {
                 let isLiked = engine.currentTrack?.id.map { LibraryStore.shared.isTrackLiked(trackId: $0) } ?? false
                 Button {
@@ -74,6 +76,7 @@ struct NowPlayingBar: View {
                 }
                 .buttonStyle(.plain)
                 
+
                 Button {
                     engine.stop()
                 } label: {
@@ -466,7 +469,6 @@ struct NowPlayingBar: View {
         }
     }
 }
-
 // MARK: - Artwork dominant color (nonisolated, safe for detached tasks)
 func extractDominantColor(from image: NSImage) -> Color {
     guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return .clear }

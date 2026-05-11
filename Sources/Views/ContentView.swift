@@ -17,7 +17,7 @@ enum AppSection: String, CaseIterable {
         case .music: return "music.note.list"
         case .audiobooks: return "book.closed"
         case .likedSongs: return "heart"
-        case .playlists: return "music.note.list"
+        case .playlists: return "rectangle.stack"
         }
     }
     var filledIcon: String {
@@ -26,7 +26,7 @@ enum AppSection: String, CaseIterable {
         case .music: return "music.note.list"
         case .audiobooks: return "book.closed.fill"
         case .likedSongs: return "heart.fill"
-        case .playlists: return "music.note.list"
+        case .playlists: return "rectangle.stack.fill"
         }
     }
     
@@ -54,8 +54,8 @@ struct ContentView: View {
     @State private var sortOption: SortOption = .dateAdded
     @State private var sortAscending = false
     @State private var selectedPlaylist: Playlist?
-    @State private var showNewPlaylistAlert = false
-    @State private var newPlaylistName = ""
+    @State private var playlistsExpanded = false
+    @State private var showSettings = false
     @Environment(\.colorScheme) var systemScheme
     
     let db: DatabasePool
@@ -115,6 +115,9 @@ struct ContentView: View {
         .environment(engine)
         .environment(lyrics)
         .id(themeManager.activeLightTheme)
+        .sheet(isPresented: $showSettings) {
+            SettingsView(db: db)
+        }
     }
     
     // MARK: - Ambient Gradient Blobs (for Luminous Audio)
@@ -194,7 +197,6 @@ struct ContentView: View {
             .padding(.horizontal, 12)
             .onChange(of: section) { _, _ in
                 deactivateSearch()
-                selectedPlaylist = nil
             }
             
             // MARK: - Your Music section
@@ -210,87 +212,90 @@ struct ContentView: View {
                 // Liked Songs
                 sidebarButton(for: .likedSongs)
                 
-                // Playlists header + create
-                HStack {
-                    Text("PLAYLISTS")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(t.outlineVariant)
-                        .tracking(2)
-                    Spacer()
+                // Playlists row: clickable label + chevron expand
+                HStack(spacing: 0) {
+                    // Clicking "Playlists" navigates to the overview
                     Button {
-                        showNewPlaylistAlert = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(t.primary)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 6)
-                
-                // Playlist items
-                ForEach(library.playlists) { playlist in
-                    Button {
-                        selectedPlaylist = playlist
                         section = .playlists
+                        selectedPlaylist = nil
                         if engine.isNowPlayingViewActive {
                             engine.isNowPlayingViewActive = false
                         }
                     } label: {
                         HStack(spacing: 10) {
-                            Image(systemName: "music.note.list")
-                                .font(.system(size: 13))
+                            Image(systemName: section == .playlists && selectedPlaylist == nil ? "rectangle.stack.fill" : "rectangle.stack")
+                                .font(.system(size: 14))
                                 .frame(width: 20)
-                            Text(playlist.name)
-                                .font(.system(size: 12, weight: (section == .playlists && selectedPlaylist?.id == playlist.id) ? .bold : .medium))
+                                .foregroundStyle(section == .playlists && selectedPlaylist == nil ? t.primary : t.onSurfaceVariant)
+                            Text("Playlists")
+                                .font(.system(size: 13, weight: section == .playlists && selectedPlaylist == nil ? .bold : .medium))
+                                .foregroundStyle(section == .playlists && selectedPlaylist == nil ? t.primary : t.onSurfaceVariant)
                                 .lineLimit(1)
                             Spacer()
                         }
-                        .foregroundStyle((section == .playlists && selectedPlaylist?.id == playlist.id) ? t.primary : t.onSurfaceVariant)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 10)
+                        .padding(.leading, 4)
                         .contentShape(Rectangle())
-                        .background {
-                            if section == .playlists && selectedPlaylist?.id == playlist.id {
-                                sidebarSelectionBackground
-                            }
-                        }
                     }
                     .buttonStyle(.plain)
-                    .contextMenu {
-                        Button("Delete Playlist", role: .destructive) {
-                            if selectedPlaylist?.id == playlist.id {
-                                selectedPlaylist = nil
-                                section = .home
-                            }
-                            library.deletePlaylist(playlist, db: db)
+
+                    // Chevron expand/collapse
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            playlistsExpanded.toggle()
                         }
+                    } label: {
+                        Image(systemName: playlistsExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(t.outlineVariant)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+                .background {
+                    if section == .playlists && selectedPlaylist == nil {
+                        sidebarSelectionBackground
+                            .padding(.horizontal, -4)
+                    }
+                }
+
+                // Expandable playlist items
+                if playlistsExpanded {
+                    ForEach(library.playlists) { playlist in
+                        sidebarPlaylistButton(playlist: playlist)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .padding(.horizontal, 12)
-            .alert("New Playlist", isPresented: $showNewPlaylistAlert) {
-                TextField("Playlist name", text: $newPlaylistName)
-                Button("Create") {
-                    let name = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    if let pl = library.createPlaylist(name: name, db: db) {
-                        selectedPlaylist = pl
-                        section = .playlists
-                    }
-                    newPlaylistName = ""
-                }
-                Button("Cancel", role: .cancel) { newPlaylistName = "" }
-            } message: {
-                Text("Enter a name for your new playlist.")
-            }
 
             Spacer()
             
-            // Theme toggle & palette selector
+            // Settings & Theme toggle
             HStack(spacing: 8) {
+                // Settings button
+                Button {
+                    showSettings = true
+                } label: {
+                    ZStack {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(t.primary)
+                    }
+                    .frame(width: 32, height: 32)
+                    .background(
+                        t.isGlassmorphic
+                            ? AnyShapeStyle(Color.white.opacity(0.06))
+                            : AnyShapeStyle(t.surfaceContainerHigh.opacity(0.5))
+                    )
+                    .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                
                 // Light/Dark toggle
                 Button {
                     withAnimation(.easeInOut(duration: 0.25)) {
@@ -422,6 +427,8 @@ struct ContentView: View {
                 } else {
                     PlaylistsOverviewView(db: db, onSelectPlaylist: { playlist in
                         selectedPlaylist = playlist
+                    }, onPlayTrack: { track, queue in
+                        playTrack(track, from: queue)
                     })
                 }
             }
@@ -442,7 +449,7 @@ struct ContentView: View {
     private func sidebarButton(for sec: AppSection) -> some View {
         Button {
             section = sec
-            if sec != .playlists { selectedPlaylist = nil }
+            selectedPlaylist = nil
             if engine.isNowPlayingViewActive {
                 engine.isNowPlayingViewActive = false
             }
@@ -493,6 +500,56 @@ struct ContentView: View {
         } else {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(t.surfaceContainer)
+        }
+    }
+    
+    // MARK: - Sidebar Playlist Button (regular)
+    private func sidebarPlaylistButton(playlist: Playlist) -> some View {
+        Button {
+            selectedPlaylist = playlist
+            section = .playlists
+            if engine.isNowPlayingViewActive {
+                engine.isNowPlayingViewActive = false
+            }
+        } label: {
+            HStack(spacing: 10) {
+                let coverPath = library.playlistCoverArtwork(playlist, db: db)
+                if let path = coverPath {
+                    ArtworkView(path: path, size: 20, cornerRadius: 4)
+                } else {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(LinearGradient(colors: [t.primaryContainer.opacity(0.6), t.primary.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 20, height: 20)
+                        .overlay(
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.6))
+                        )
+                }
+                Text(playlist.name)
+                    .font(.system(size: 12, weight: (section == .playlists && selectedPlaylist?.id == playlist.id) ? .bold : .medium))
+                    .lineLimit(1)
+                Spacer()
+            }
+            .foregroundStyle((section == .playlists && selectedPlaylist?.id == playlist.id) ? t.primary : t.onSurfaceVariant)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+            .background {
+                if section == .playlists && selectedPlaylist?.id == playlist.id {
+                    sidebarSelectionBackground
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Delete Playlist", role: .destructive) {
+                if selectedPlaylist?.id == playlist.id {
+                    selectedPlaylist = nil
+                    section = .home
+                }
+                library.deletePlaylist(playlist, db: db)
+            }
         }
     }
 }
