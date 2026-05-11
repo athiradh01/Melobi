@@ -143,13 +143,15 @@ public struct Playlist: Codable, FetchableRecord, MutablePersistableRecord, Iden
     public var id: Int64?
     public var name: String
     public var artworkPath: String?
+    public var isVault: Bool
     public var createdAt: Date
     public var updatedAt: Date
     
-    public init(id: Int64? = nil, name: String, artworkPath: String? = nil, createdAt: Date = Date(), updatedAt: Date = Date()) {
+    public init(id: Int64? = nil, name: String, artworkPath: String? = nil, isVault: Bool = false, createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id
         self.name = name
         self.artworkPath = artworkPath
+        self.isVault = isVault
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -183,11 +185,13 @@ public struct LikedTrack: Codable, FetchableRecord, MutablePersistableRecord, Id
     public var id: Int64?
     public var trackId: Int64
     public var likedAt: Date
+    public var sortOrder: Int
     
-    public init(id: Int64? = nil, trackId: Int64, likedAt: Date = Date()) {
+    public init(id: Int64? = nil, trackId: Int64, likedAt: Date = Date(), sortOrder: Int = 0) {
         self.id = id
         self.trackId = trackId
         self.likedAt = likedAt
+        self.sortOrder = sortOrder
     }
     
     mutating public func didInsert(_ inserted: InsertionSuccess) {

@@ -16,16 +16,22 @@ struct LikedSongsView: View {
     
     private var t: Theme { Theme(scheme: colorScheme) }
     
+    private var isCustomMode: Bool { sortBy == "custom" }
+    
     private var sortedList: [Track] {
         switch sortBy {
         case "title": return likedList.sorted { ($0.title ?? "") < ($1.title ?? "") }
         case "artist": return likedList.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
         case "duration": return likedList.sorted { ($0.durationMs ?? 0) < ($1.durationMs ?? 0) }
-        case "dateAdded":
-            let libraryOrder = Dictionary(uniqueKeysWithValues: library.tracks.enumerated().map { ($1.id ?? -1, $0) })
-            return likedList.sorted { (libraryOrder[$0.id ?? -1] ?? Int.max) < (libraryOrder[$1.id ?? -1] ?? Int.max) }
+        case "custom": return likedList // Use the current order (persisted sortOrder)
+        case "dateAdded": return likedList // Already sorted by sortOrder from DB
         default: return likedList
         }
+    }
+    
+    /// The list used for playback — always reflects what the user sees
+    private var playbackList: [Track] {
+        isCustomMode ? likedList : sortedList
     }
     
     var body: some View {
@@ -53,18 +59,34 @@ struct LikedSongsView: View {
                         .foregroundStyle(t.onSurfaceVariant)
                     
                     if !likedList.isEmpty {
-                        Button {
-                            if let first = sortedList.first { onPlayTrack(first, sortedList) }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "play.fill").font(.system(size: 10))
-                                Text("Play All").font(.system(size: 12, weight: .bold))
+                        HStack(spacing: 8) {
+                            Button {
+                                if let first = playbackList.first { onPlayTrack(first, playbackList) }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "play.fill").font(.system(size: 10))
+                                    Text("Play").font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundStyle(t.onPrimary)
+                                .padding(.horizontal, 16).padding(.vertical, 8)
+                                .background(t.primary).clipShape(Capsule())
                             }
-                            .foregroundStyle(t.onPrimary)
-                            .padding(.horizontal, 16).padding(.vertical, 8)
-                            .background(t.primary).clipShape(Capsule())
+                            .buttonStyle(.plain)
+                            
+                            Button {
+                                let shuffled = playbackList.shuffled()
+                                if let first = shuffled.first { onPlayTrack(first, shuffled) }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "shuffle").font(.system(size: 10, weight: .bold))
+                                    Text("Shuffle").font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundStyle(t.primary)
+                                .padding(.horizontal, 16).padding(.vertical, 8)
+                                .background(t.primaryContainer.opacity(0.2)).clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 
@@ -72,6 +94,8 @@ struct LikedSongsView: View {
                 
                 // Sort menu
                 Menu {
+                    Button { sortBy = "custom" } label: { Label("Custom", systemImage: sortBy == "custom" ? "checkmark" : "") }
+                    Divider()
                     Button { sortBy = "dateAdded" } label: { Label("Date Added", systemImage: sortBy == "dateAdded" ? "checkmark" : "") }
                     Button { sortBy = "title" } label: { Label("Title", systemImage: sortBy == "title" ? "checkmark" : "") }
                     Button { sortBy = "artist" } label: { Label("Artist", systemImage: sortBy == "artist" ? "checkmark" : "") }
@@ -102,6 +126,49 @@ struct LikedSongsView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
+            } else if isCustomMode {
+                // Custom mode with drag-and-drop reordering
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(likedList.enumerated()), id: \.element.id) { index, track in
+                            let playing = engine.currentTrack?.id == track.id && engine.isPlaying
+                            HStack(spacing: 0) {
+                                Image(systemName: "line.3.horizontal")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(t.outlineVariant.opacity(0.5))
+                                    .frame(width: 24)
+                                    .padding(.leading, 4)
+                                
+                                TrackRow(track: track, index: index + 1, isPlaying: playing, t: t) {
+                                    onPlayTrack(track, likedList)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .draggable(track.id.map { String($0) } ?? "") {
+                                TrackRow(track: track, index: index + 1, isPlaying: playing, t: t) {}
+                                    .frame(width: 400)
+                                    .background(t.surfaceContainerLow.opacity(0.95))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            .dropDestination(for: String.self) { droppedItems, _ in
+                                guard let droppedIdStr = droppedItems.first,
+                                      let droppedId = Int64(droppedIdStr),
+                                      let fromIndex = likedList.firstIndex(where: { $0.id == droppedId }),
+                                      let toIndex = likedList.firstIndex(where: { $0.id == track.id }),
+                                      fromIndex != toIndex else { return false }
+                                likedList.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+                                let trackIds = likedList.compactMap { $0.id }
+                                library.reorderLikedTracks(trackIds: trackIds, db: db)
+                                return true
+                            }
+                            .contextMenu {
+                                unlikeButton(for: track)
+                                addToPlaylistMenu(track: track)
+                            }
+                        }
+                    }
+                    .padding(.bottom, 100)
+                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -156,14 +223,35 @@ struct LikedSongsView: View {
 // MARK: - Playlists Overview View
 struct PlaylistsOverviewView: View {
     @Environment(LibraryStore.self) var library
+    @Environment(AudioEngine.self) var engine
     @Environment(\.colorScheme) var colorScheme
     let db: DatabasePool
     var onSelectPlaylist: (Playlist) -> Void
+    var onPlayTrack: (Track, [Track]) -> Void
     
     @State private var showNewPlaylistAlert = false
     @State private var newPlaylistName = ""
+    @State private var showNewVaultAlert = false
+    @State private var newVaultName = ""
+    @State private var sortBy: String = "recent"
+
     
     private var t: Theme { Theme(scheme: colorScheme) }
+    
+    private var sortedPlaylists: [Playlist] {
+        switch sortBy {
+        case "nameAZ":
+            return library.playlists.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case "nameZA":
+            return library.playlists.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedDescending }
+        case "mostTracks":
+            return library.playlists.sorted { library.trackCountForPlaylist($0, db: db) > library.trackCountForPlaylist($1, db: db) }
+        case "leastTracks":
+            return library.playlists.sorted { library.trackCountForPlaylist($0, db: db) < library.trackCountForPlaylist($1, db: db) }
+        default:
+            return library.playlists
+        }
+    }
     
     var body: some View {
         ScrollView {
@@ -181,13 +269,51 @@ struct PlaylistsOverviewView: View {
                     }
                     Spacer()
                     
-                    Button {
-                        showNewPlaylistAlert = true
+                    // Sort menu
+                    Menu {
+                        Button { sortBy = "recent" } label: {
+                            Label("Recent", systemImage: sortBy == "recent" ? "checkmark" : "")
+                        }
+                        Button { sortBy = "nameAZ" } label: {
+                            Label("Name A → Z", systemImage: sortBy == "nameAZ" ? "checkmark" : "")
+                        }
+                        Button { sortBy = "nameZA" } label: {
+                            Label("Name Z → A", systemImage: sortBy == "nameZA" ? "checkmark" : "")
+                        }
+                        Divider()
+                        Button { sortBy = "mostTracks" } label: {
+                            Label("Most Tracks", systemImage: sortBy == "mostTracks" ? "checkmark" : "")
+                        }
+                        Button { sortBy = "leastTracks" } label: {
+                            Label("Least Tracks", systemImage: sortBy == "leastTracks" ? "checkmark" : "")
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(t.onSurfaceVariant)
+                            .frame(width: 32, height: 32)
+                            .background(t.surfaceContainerHighest.opacity(0.4))
+                            .clipShape(Circle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    
+                    Menu {
+                        Button {
+                            showNewPlaylistAlert = true
+                        } label: {
+                            Label("New Playlist", systemImage: "music.note.list")
+                        }
+                        Button {
+                            showNewVaultAlert = true
+                        } label: {
+                            Label("New Private Vault", systemImage: "lock.shield")
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "plus")
                                 .font(.system(size: 11, weight: .bold))
-                            Text("New Playlist")
+                            Text("New")
                                 .font(.system(size: 12, weight: .bold))
                         }
                         .foregroundStyle(t.onPrimary)
@@ -196,7 +322,8 @@ struct PlaylistsOverviewView: View {
                         .background(t.primary)
                         .clipShape(Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
                 .padding(.top, 8)
                 
@@ -215,14 +342,15 @@ struct PlaylistsOverviewView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 80)
                 } else {
-                    // Grid of playlist cards
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 16)], spacing: 16) {
-                        ForEach(library.playlists) { playlist in
-                            PlaylistCard(playlist: playlist, db: db, t: t)
+                        ForEach(sortedPlaylists) { playlist in
+                            PlaylistCard(playlist: playlist, db: db, t: t, onPlayTrack: onPlayTrack)
                                 .onTapGesture {
                                     onSelectPlaylist(playlist)
                                 }
                                 .contextMenu {
+                                    Button("Open Playlist") { onSelectPlaylist(playlist) }
+                                    Divider()
                                     Button("Delete Playlist", role: .destructive) {
                                         library.deletePlaylist(playlist, db: db)
                                     }
@@ -251,7 +379,22 @@ struct PlaylistsOverviewView: View {
         } message: {
             Text("Enter a name for your new playlist.")
         }
+        .alert("New Private Vault", isPresented: $showNewVaultAlert) {
+            TextField("Vault name", text: $newVaultName)
+            Button("Create") {
+                let name = newVaultName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { return }
+                if let pl = library.createVaultPlaylist(name: name, db: db) {
+                    onSelectPlaylist(pl)
+                }
+                newVaultName = ""
+            }
+            Button("Cancel", role: .cancel) { newVaultName = "" }
+        } message: {
+            Text("Songs added to a Private Vault will be hidden from your library.")
+        }
     }
+    
 }
 
 // MARK: - Playlist Card
@@ -259,47 +402,74 @@ struct PlaylistCard: View {
     let playlist: Playlist
     let db: DatabasePool
     let t: Theme
+    var onPlayTrack: (Track, [Track]) -> Void
     @Environment(LibraryStore.self) var library
+    
+    @State private var isHovered = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             let coverPath = library.playlistCoverArtwork(playlist, db: db)
+            let trackCount = library.trackCountForPlaylist(playlist, db: db)
             
-            ZStack {
-                ArtworkView(path: coverPath, size: 160, cornerRadius: 14)
-                    .overlay(
+            ZStack(alignment: .bottomTrailing) {
+                ZStack {
+                    ArtworkView(path: coverPath, size: 160, cornerRadius: 14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.clear, .black.opacity(0.4)],
+                                        startPoint: .center, endPoint: .bottom
+                                    )
+                                )
+                        )
+                    
+                    if coverPath == nil {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [.clear, .black.opacity(0.4)],
-                                    startPoint: .center, endPoint: .bottom
+                                    colors: [t.primaryContainer.opacity(0.6), t.primary.opacity(0.3)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
                                 )
                             )
-                    )
-                
-                if coverPath == nil {
-                    // Placeholder gradient for empty playlists
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [t.primaryContainer.opacity(0.6), t.primary.opacity(0.3)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            .frame(width: 160, height: 160)
+                            .overlay(
+                                Image(systemName: "music.note.list")
+                                    .font(.system(size: 36, weight: .light))
+                                    .foregroundStyle(.white.opacity(0.5))
                             )
-                        )
-                        .frame(width: 160, height: 160)
-                        .overlay(
-                            Image(systemName: "music.note.list")
-                                .font(.system(size: 36, weight: .light))
-                                .foregroundStyle(.white.opacity(0.5))
-                        )
+                    }
+                }
+                
+                if trackCount > 0 && isHovered {
+                    Button {
+                        let tracks = library.tracksForPlaylist(playlist, db: db)
+                        if let first = tracks.first {
+                            onPlayTrack(first, tracks)
+                        }
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(t.primary)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(10)
                 }
             }
             .frame(width: 160, height: 160)
+            .onHover { isHovered = $0 }
             
-            Text(playlist.name)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(t.onSurface)
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                Text(playlist.name)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(t.onSurface)
+                    .lineLimit(1)
+            }
             
             Text("\(library.trackCountForPlaylist(playlist, db: db)) tracks")
                 .font(.system(size: 11))
@@ -320,7 +490,7 @@ struct PlaylistDetailView: View {
     var onGoBack: (() -> Void)? = nil
     
     @State private var tracks: [Track] = []
-    @State private var showAddTracksSheet = false
+
     @State private var coverHovered = false
 
     @State private var sortBy: String = "order"
@@ -366,7 +536,6 @@ struct PlaylistDetailView: View {
                             .overlay(Image(systemName: "music.note.list").font(.system(size: 24, weight: .light)).foregroundStyle(.white.opacity(0.5)))
                     }
                     
-                    // Hover overlay for changing cover
                     if coverHovered {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .fill(.black.opacity(0.45))
@@ -383,10 +552,12 @@ struct PlaylistDetailView: View {
                 .onTapGesture { pickCoverArt() }
                 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(playlist.name)
-                        .font(.system(size: 26, weight: .heavy))
-                        .foregroundStyle(t.onSurface)
-                        .tracking(-0.5)
+                    HStack(spacing: 8) {
+                        Text(playlist.name)
+                            .font(.system(size: 26, weight: .heavy))
+                            .foregroundStyle(t.onSurface)
+                            .tracking(-0.5)
+                    }
                     
                     Text("\(tracks.count) songs")
                         .font(.system(size: 12, weight: .medium))
@@ -399,31 +570,46 @@ struct PlaylistDetailView: View {
                             } label: {
                                 HStack(spacing: 5) {
                                     Image(systemName: "play.fill").font(.system(size: 9))
-                                    Text("Play All").font(.system(size: 11, weight: .bold))
+                                    Text("Play").font(.system(size: 11, weight: .bold))
                                 }
                                 .foregroundStyle(t.onPrimary)
                                 .padding(.horizontal, 14).padding(.vertical, 7)
                                 .background(t.primary).clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
+                            
+                            Button {
+                                let shuffled = sortedTracks.shuffled()
+                                if let first = shuffled.first { onPlayTrack(first, shuffled) }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "shuffle").font(.system(size: 9, weight: .bold))
+                                    Text("Shuffle").font(.system(size: 11, weight: .bold))
+                                }
+                                .foregroundStyle(t.primary)
+                                .padding(.horizontal, 14).padding(.vertical, 7)
+                                .background(t.primaryContainer.opacity(0.2)).clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
                         }
                         
-                        Button { showAddTracksSheet = true } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus").font(.system(size: 9, weight: .bold))
-                                Text("Add Songs").font(.system(size: 11, weight: .bold))
+                        if playlist.isVault {
+                            Button { importFilesToVault() } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "folder.badge.plus").font(.system(size: 9, weight: .bold))
+                                    Text("Import Files").font(.system(size: 11, weight: .bold))
+                                }
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                .background(Color.orange.opacity(0.12)).clipShape(Capsule())
                             }
-                            .foregroundStyle(t.primary)
-                            .padding(.horizontal, 12).padding(.vertical, 7)
-                            .background(t.primaryContainer.opacity(0.2)).clipShape(Capsule())
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 
                 Spacer()
                 
-                // Sort
                 Menu {
                     Button { sortBy = "custom" } label: { Label("Custom", systemImage: sortBy == "custom" ? "checkmark" : "") }
                     Button { sortBy = "order" } label: { Label("Playlist Order", systemImage: sortBy == "order" ? "checkmark" : "") }
@@ -450,14 +636,16 @@ struct PlaylistDetailView: View {
             if tracks.isEmpty {
                 VStack(spacing: 12) {
                     Spacer()
-                    Image(systemName: "music.note").font(.system(size: 40, weight: .thin)).foregroundStyle(t.outlineVariant.opacity(0.4))
-                    Text("This playlist is empty").font(.system(size: 14, weight: .semibold)).foregroundStyle(t.onSurfaceVariant.opacity(0.6))
-                    Text("Tap \"Add Songs\" to get started.").font(.system(size: 12)).foregroundStyle(t.outlineVariant)
+                    Image(systemName: "music.note")
+                        .font(.system(size: 40, weight: .thin)).foregroundStyle(t.outlineVariant.opacity(0.4))
+                    Text("This playlist is empty")
+                        .font(.system(size: 14, weight: .semibold)).foregroundStyle(t.onSurfaceVariant.opacity(0.6))
+                    Text(playlist.isVault ? "Use \"Import Files\" to add tracks." : "Add songs from the library or now playing bar.")
+                        .font(.system(size: 12)).foregroundStyle(t.outlineVariant)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
             } else if isCustomMode {
-                // Custom mode: drag to reorder
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
@@ -475,10 +663,9 @@ struct PlaylistDetailView: View {
                             }
                             .contentShape(Rectangle())
                             .draggable(track.id.map { String($0) } ?? "") {
-                                Text(track.title ?? "Track")
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(.ultraThinMaterial)
+                                TrackRow(track: track, index: index + 1, isPlaying: playing, t: t) {}
+                                    .frame(width: 400)
+                                    .background(t.surfaceContainerLow.opacity(0.95))
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                             .dropDestination(for: String.self) { droppedItems, _ in
@@ -523,12 +710,7 @@ struct PlaylistDetailView: View {
         .background(t.isGlassmorphic ? Color.clear : t.surface)
         .onAppear { refreshTracks() }
         .onChange(of: playlist.id) { _, _ in refreshTracks() }
-        .sheet(isPresented: $showAddTracksSheet) {
-            AddTracksSheet(playlist: playlist, db: db, t: t, onDismiss: {
-                showAddTracksSheet = false
-                refreshTracks()
-            })
-        }
+
 
     }
     
@@ -563,13 +745,30 @@ struct PlaylistDetailView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         if panel.runModal() == .OK, let url = panel.url {
-            // Copy image to app support directory for persistence
             let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             let coversDir = appSupport.appendingPathComponent("Resonance/PlaylistCovers", isDirectory: true)
             try? FileManager.default.createDirectory(at: coversDir, withIntermediateDirectories: true)
             let destURL = coversDir.appendingPathComponent("\(playlist.id ?? 0)_\(Int(Date().timeIntervalSince1970)).\(url.pathExtension)")
             try? FileManager.default.copyItem(at: url, to: destURL)
             library.setPlaylistCoverArt(playlist, path: destURL.path, db: db)
+        }
+    }
+    
+    private func importFilesToVault() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Audio Files to Vault"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.message = "Select audio files or folders to import into this private vault"
+        guard panel.runModal() == .OK else { return }
+        guard let pid = playlist.id, let artworkDir = AppDatabase.shared.artworkDirectory else { return }
+        
+        library.importFilesToVaultPlaylist(urls: panel.urls, playlistId: pid, db: db, artworkDir: artworkDir)
+        
+        // Refresh tracks after a short delay to allow import to start
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            refreshTracks()
         }
     }
 }

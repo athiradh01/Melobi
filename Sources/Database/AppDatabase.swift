@@ -146,6 +146,24 @@ public final class AppDatabase {
             }
         }
         
+        migrator.registerMigration("v4") { db in
+            try db.alter(table: "playlist") { t in
+                t.add(column: "isVault", .boolean).notNull().defaults(to: false)
+            }
+        }
+        
+        migrator.registerMigration("v5") { db in
+            try db.alter(table: "likedTrack") { t in
+                t.add(column: "sortOrder", .integer).notNull().defaults(to: 0)
+            }
+            // Initialize sort orders based on current likedAt order
+            let rows = try Row.fetchAll(db, sql: "SELECT id FROM likedTrack ORDER BY likedAt DESC")
+            for (index, row) in rows.enumerated() {
+                let id: Int64 = row["id"]
+                try db.execute(sql: "UPDATE likedTrack SET sortOrder = ? WHERE id = ?", arguments: [index, id])
+            }
+        }
+        
         return migrator
     }
 }
