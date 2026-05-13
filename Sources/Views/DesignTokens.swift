@@ -5,6 +5,7 @@ public enum LightThemeOption: String, CaseIterable, Identifiable {
     case roseQuartz = "Rose Quartz"
     case mintBreeze = "Mint Breeze"
     case lavenderDream = "Lavender Dream"
+    case warmIvory = "Warm Ivory"
     
     public var id: String { self.rawValue }
     
@@ -13,6 +14,7 @@ public enum LightThemeOption: String, CaseIterable, Identifiable {
         case .roseQuartz: return DS.Light.roseQuartz
         case .mintBreeze: return DS.Light.mintBreeze
         case .lavenderDream: return DS.Light.lavenderDream
+        case .warmIvory: return DS.Light.warmIvory
         }
     }
 }
@@ -171,6 +173,27 @@ enum DS {
             background: Color(r: 250, g: 246, b: 255),
             sidebarBg: Color(r: 240, g: 230, b: 252, a: 0.8)
         )
+        
+        static let warmIvory = ThemePalette(
+            primary: Color(r: 212, g: 140, b: 90),
+            primaryDim: Color(r: 195, g: 125, b: 75),
+            primaryContainer: Color(r: 255, g: 220, b: 195),
+            onPrimary: Color.white,
+            onPrimaryContainer: Color(r: 80, g: 45, b: 20),
+            surface: Color(r: 252, g: 250, b: 247),
+            onSurface: Color(r: 65, g: 55, b: 50),
+            onSurfaceVariant: Color(r: 125, g: 110, b: 100),
+            surfaceContainer: Color(r: 245, g: 240, b: 232),
+            surfaceContainerLow: Color(r: 249, g: 245, b: 239),
+            surfaceContainerHigh: Color(r: 240, g: 233, b: 223),
+            surfaceContainerHighest: Color(r: 233, g: 225, b: 215),
+            surfaceContainerLowest: Color(r: 255, g: 253, b: 251),
+            outline: Color(r: 155, g: 140, b: 130),
+            outlineVariant: Color(r: 210, g: 195, b: 185),
+            secondaryContainer: Color(r: 240, g: 230, b: 215),
+            background: Color(r: 252, g: 250, b: 247),
+            sidebarBg: Color(r: 245, g: 240, b: 232, a: 0.8)
+        )
     }
     
     // Dark Mode Palettes
@@ -276,11 +299,14 @@ extension Color {
     }
 }
 
-// Adaptive color resolver
 public struct Theme {
     let scheme: ColorScheme
     let activeLightPalette: ThemePalette
     let activeDarkPalette: ThemePalette
+    let dynamicPalette: ThemePalette?
+    let customPalette: ThemePalette?
+    let isDynamicMode: Bool
+    let isCustomMode: Bool
     
     // Fallback initializer that properly defaults to the user's active theme
     @MainActor
@@ -288,17 +314,30 @@ public struct Theme {
         self.scheme = scheme
         self.activeLightPalette = ThemeManager.shared.activeLightTheme.theme
         self.activeDarkPalette = ThemeManager.shared.activeDarkTheme.theme
+        self.dynamicPalette = ThemeManager.shared.dynamicPalette
+        self.customPalette = ThemeManager.shared.customPalette
+        self.isDynamicMode = ThemeManager.shared.themeMode == .dynamic
+        self.isCustomMode = ThemeManager.shared.themeMode == .custom
     }
     
-    // New initializer that takes the active light palette
-    init(scheme: ColorScheme, lightPalette: ThemePalette, darkPalette: ThemePalette) {
+    init(scheme: ColorScheme, lightPalette: ThemePalette, darkPalette: ThemePalette, dynamicPalette: ThemePalette? = nil, customPalette: ThemePalette? = nil, isDynamicMode: Bool = false, isCustomMode: Bool = false) {
         self.scheme = scheme
         self.activeLightPalette = lightPalette
         self.activeDarkPalette = darkPalette
+        self.dynamicPalette = dynamicPalette
+        self.customPalette = customPalette
+        self.isDynamicMode = isDynamicMode
+        self.isCustomMode = isCustomMode
     }
     
     private var p: ThemePalette {
-        scheme == .dark ? activeDarkPalette : activeLightPalette
+        if isDynamicMode, let dyn = dynamicPalette {
+            return dyn
+        }
+        if isCustomMode, let cust = customPalette {
+            return cust
+        }
+        return scheme == .dark ? activeDarkPalette : activeLightPalette
     }
     
     var primary: Color { p.primary }

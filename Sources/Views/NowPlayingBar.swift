@@ -23,7 +23,8 @@ struct NowPlayingBar: View {
     
     
 
-    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
+    @AppStorage("app.isDynamicSolid") private var isDynamicSolid: Bool = false
+    private var t: Theme { Theme(scheme: colorScheme) }
     private var currentArtworkPath: String? {
         engine.currentTrack?.artworkPath ?? engine.currentAudiobook?.artworkPath
     }
@@ -498,7 +499,7 @@ func extractDominantColor(from image: NSImage) -> Color {
 struct QueuePopoverView: View {
     @Environment(AudioEngine.self) var engine
     @Environment(\.colorScheme) var colorScheme
-    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
+    private var t: Theme { Theme(scheme: colorScheme) }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -548,7 +549,7 @@ struct QueueTrackRow: View {
     let index: Int
     @Environment(AudioEngine.self) var engine
     @Environment(\.colorScheme) var colorScheme
-    private var t: Theme { Theme(scheme: colorScheme, lightPalette: ThemeManager.shared.activeLightTheme.theme, darkPalette: ThemeManager.shared.activeDarkTheme.theme) }
+    private var t: Theme { Theme(scheme: colorScheme) }
     
     @State private var isPressed = false
     @State private var isHovering = false

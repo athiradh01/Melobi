@@ -21,6 +21,13 @@
 - **Auto-Scrolling:** Smooth, automatic scrolling that keeps the current line centered.
 - **Lyric Variants:** Support for multiple lyric versions (e.g., Romanized, Translated) within the same track.
 
+### 🎛️ High-Fidelity Equalizer
+- **Dual Audio Engine:** Dynamically switches between `AVPlayer` (for battery-efficient audiobook/off-mode playback) and `AVAudioEngine` (for active hardware DSP processing).
+- **6-Band Parametric EQ:** Professional-grade equalizer with a responsive graphic UI, featuring horizontal/vertical grid lines and exact dB labeling.
+- **Peak Limiting Protection:** Integrated `AVAudioUnitEffect` peak limiter to prevent audio clipping during heavy bass boosts.
+- **Harman Target Curve:** Exclusive built-in 'Harman Curve' preset, alongside 15+ other acoustic configurations.
+- **Persistent States:** Slider positions and presets are automatically saved via `UserDefaults` and instantly applied on launch.
+
 ### 💎 Luminous Glassmorphic UI
 - **Ambient Visuals:** Dynamic ambient gradient "blobs" that respond to the active theme.
 - **Glassmorphism:** A premium macOS experience with translucent sidebars, blurred backgrounds, and sleek navigation.
@@ -69,3 +76,12 @@ The project follows a clean, modular architecture separated by responsibility:
 ---
 
 *Created as a lightweight, keyboard-accessible alternative for managing offline music and audiobooks on the Mac.*
+
+---
+
+## 📈 Recent Updates (Feature: Equalizer & UI Polish)
+- **Architectural Overhaul:** Rewrote `AudioEngine.swift` to seamlessly manage handoffs between `AVPlayer` and `AVAudioEngine` mid-playback without stuttering, allowing native EQ injection while maintaining robust AVPlayer stability for disabled states.
+- **Harman Curve Tuning:** Added precise +6.0dB Sub Bass / +3.5dB Mid Bass targets with an inline `-3.0` preGain limiter to perfectly recreate the Harman Target curve.
+- **Glassmorphic UI Refinements:** Fixed top-left traffic light clipping in the main macOS window by expanding the `.ignoresSafeArea()` background bleed.
+- **Sidebar UX:** Added full-width horizontal hit-testing to all sidebar rows (`.contentShape(Rectangle())`), allowing navigation clicks anywhere inside the row bounding box.
+- **Preset Management:** Reordered the Equalizer preset list to prioritize "Off" at the top and "Custom" at the bottom, dynamically updating whenever a user drags an EQ slider.
