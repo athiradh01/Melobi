@@ -61,7 +61,7 @@ struct ContentView: View {
     let db: DatabasePool
     
     private var activeScheme: ColorScheme { themeManager.overrideScheme ?? systemScheme }
-    private var t: Theme { Theme(scheme: activeScheme, lightPalette: themeManager.activeLightTheme.theme, darkPalette: themeManager.activeDarkTheme.theme) }
+    private var t: Theme { Theme(scheme: activeScheme) }
     
     /// Sorted tracks matching the library's current display order
     private var sortedTracks: [Track] {
@@ -119,6 +119,11 @@ struct ContentView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(db: db)
         }
+        .onChange(of: engine.currentTrack) { _, newTrack in
+            if themeManager.themeMode == .dynamic {
+                themeManager.extractDynamicTheme(from: newTrack)
+            }
+        }
     }
     
     // MARK: - Ambient Gradient Blobs (for Luminous Audio)
@@ -173,7 +178,12 @@ struct ContentView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(activeScheme == .dark ? themeManager.activeDarkTheme.rawValue : themeManager.activeLightTheme.rawValue)
+                Text({
+                    switch themeManager.themeMode {
+                    case .custom: return "Custom"
+                    default: return activeScheme == .dark ? themeManager.activeDarkTheme.rawValue : themeManager.activeLightTheme.rawValue
+                    }
+                }())
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(t.onSurface)
                     .tracking(-0.5)
@@ -297,17 +307,24 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // Light/Dark toggle
+                // Light/Dark/Custom toggle
                 Button {
                     withAnimation(.easeInOut(duration: 0.25)) {
-                        themeManager.toggle(current: activeScheme)
+                        themeManager.toggle(currentTrack: engine.currentTrack)
                     }
                 } label: {
                     ZStack {
-                        Image(systemName: activeScheme == .dark ? "sun.max.fill" : "moon.fill")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(activeScheme == .dark ? Color.orange : t.primary)
-                            .contentTransition(.symbolEffect(.replace))
+                        if themeManager.themeMode == .dark || themeManager.themeMode == .custom {
+                            Image(systemName: "sun.max.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color.orange)
+                                .contentTransition(.symbolEffect(.replace))
+                        } else {
+                            Image(systemName: "moon.fill")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(t.primary)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
                     }
                     .frame(width: 32, height: 32)
                     .background(
@@ -325,6 +342,7 @@ struct ContentView: View {
                         ForEach(DarkThemeOption.allCases) { option in
                             Button(option.rawValue) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
+                                    themeManager.themeMode = .dark
                                     themeManager.activeDarkTheme = option
                                 }
                             }
@@ -333,13 +351,20 @@ struct ContentView: View {
                         ForEach(LightThemeOption.allCases) { option in
                             Button(option.rawValue) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
+                                    themeManager.themeMode = .light
                                     themeManager.activeLightTheme = option
                                 }
                             }
                         }
                     }
                 } label: {
-                    Text(activeScheme == .dark ? themeManager.activeDarkTheme.rawValue : themeManager.activeLightTheme.rawValue)
+                    let label: String = {
+                        switch themeManager.themeMode {
+                        case .custom: return "Custom"
+                        default: return activeScheme == .dark ? themeManager.activeDarkTheme.rawValue : themeManager.activeLightTheme.rawValue
+                        }
+                    }()
+                    Text(label)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(t.primary)
                         .padding(.horizontal, 10)
