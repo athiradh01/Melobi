@@ -274,6 +274,19 @@ struct NowPlayingBar: View {
                         .menuStyle(.borderlessButton).fixedSize()
                     }
                     
+                    if ThemeManager.shared.themeMode == .dynamic {
+                        Button {
+                            withAnimation(.easeInOut) {
+                                isDynamicSolid.toggle()
+                            }
+                        } label: {
+                            Image(systemName: "circle.lefthalf.filled")
+                                .font(.system(size: 14))
+                                .foregroundStyle(isDynamicSolid ? t.primary : t.onSurfaceVariant)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
                     let volumeState = engine.volume == 0 ? 0 : (engine.volume < 0.3 ? 1 : (engine.volume < 0.7 ? 2 : 3))
                     let iconName = engine.volume == 0 ? "speaker.slash.fill" : (engine.volume < 0.3 ? "speaker.wave.1.fill" : (engine.volume < 0.7 ? "speaker.wave.2.fill" : "speaker.wave.3.fill"))
                     
@@ -369,6 +382,10 @@ struct NowPlayingBar: View {
             let gradStart = artworkAccent.opacity(isDark ? 0.5 : 0.28)
             let gradMid   = artworkAccent.opacity(isDark ? 0.18 : 0.10)
             ZStack {
+                if ThemeManager.shared.themeMode == .dynamic && isDynamicSolid {
+                    Rectangle().fill(t.surface)
+                }
+                
                 if artworkAccent != .clear {
                     LinearGradient(
                         colors: [gradStart, gradMid, Color.clear],
@@ -378,11 +395,13 @@ struct NowPlayingBar: View {
                     .animation(.easeInOut(duration: 0.6), value: artworkAccent)
                 }
                 
-                if t.isGlassmorphic {
-                    // Glass card background
-                    Color.white.opacity(0.06)
-                } else {
-                    Rectangle().fill(.ultraThinMaterial)
+                if !(ThemeManager.shared.themeMode == .dynamic && isDynamicSolid) {
+                    if t.isGlassmorphic {
+                        // Glass card background
+                        Color.white.opacity(0.06)
+                    } else {
+                        Rectangle().fill(.ultraThinMaterial)
+                    }
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
