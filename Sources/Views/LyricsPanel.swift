@@ -12,9 +12,10 @@ struct LyricsPanel: View {
     @Environment(LyricsState.self) var lyrics
     @Environment(AudioEngine.self) var engine
     @Environment(\.colorScheme) var colorScheme
-    
+
     @State private var isAutoScrolling = true
     @State private var lastProgrammaticScrollTime: TimeInterval = 0
+    @State private var showEditor = false
     
     private var t: Theme { Theme(scheme: colorScheme) }
     
@@ -27,7 +28,17 @@ struct LyricsPanel: View {
                     .foregroundStyle(t.outline)
                     .tracking(2)
                 Spacer()
-                
+
+                Button {
+                    showEditor = true
+                } label: {
+                    Image(systemName: "pencil.circle")
+                        .font(.system(size: 14))
+                        .foregroundStyle(t.primary.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .help(lyrics.hasLyrics ? "Edit / Resync Lyrics" : "Add Lyrics")
+
                 if lyrics.variants.count > 1 {
                     Menu {
                         ForEach(Array(lyrics.variants.enumerated()), id: \.offset) { idx, variant in
@@ -138,15 +149,29 @@ struct LyricsPanel: View {
                     Text("No synced lyrics")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(t.onSurfaceVariant.opacity(0.5))
-                    Text("Place a .lrc file next to your audio")
-                        .font(.system(size: 11))
-                        .foregroundStyle(t.outline.opacity(0.4))
+                    Button { showEditor = true } label: {
+                        Label("Add & Sync Lyrics", systemImage: "sparkles")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(t.onPrimary)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .background(t.primary)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
             }
         }
         .background(t.surfaceContainerLow.opacity(0.5))
+        .sheet(isPresented: $showEditor) {
+            let existingText = lyrics.hasLyrics
+                ? LRCFormatter.formatLRC(lyrics.lines)
+                : ""
+            let trackURL = engine.currentTrack.map { URL(fileURLWithPath: $0.filePath) }
+            LyricsEditorView(initialRawText: existingText, initialURL: trackURL)
+        }
     }
 }
 
