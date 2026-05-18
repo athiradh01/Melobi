@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import GRDB
-import UniformTypeIdentifiers
 
 // MARK: - Home View
 struct HomeView: View {
@@ -16,6 +15,7 @@ struct HomeView: View {
 
     @State private var albums: [AlbumInfo] = []
     @State private var randomTracks: [Track] = []
+    @State private var showLyricsEditor = false
 
     private var t: Theme { Theme(scheme: colorScheme) }
 
@@ -43,6 +43,8 @@ struct HomeView: View {
                     if !library.searchQuery.isEmpty {
                         Button {
                             library.searchQuery = ""
+                            // Also drop focus so the typing option cancels
+                            NSApp.keyWindow?.makeFirstResponder(nil)
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(t.outline)
@@ -81,7 +83,7 @@ struct HomeView: View {
                     }
                     Spacer()
                     Button(action: {
-                        importLyrics()
+                        showLyricsEditor = true
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
@@ -114,6 +116,9 @@ struct HomeView: View {
         .onChange(of: library.filteredTracks) { _, _ in
             updateAlbums()
             updateRandomTracks()
+        }
+        .sheet(isPresented: $showLyricsEditor) {
+            LyricsEditorView()
         }
     }
 
@@ -497,37 +502,4 @@ struct HomeView: View {
             .prefix(10))
     }
     
-    // MARK: - Lyrics Import
-    private func importLyrics() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = true
-        
-        if let lrcType = UTType(filenameExtension: "lrc") {
-            panel.allowedContentTypes = [lrcType]
-        }
-        
-        panel.message = "Select .lrc files to import"
-        
-        panel.begin { response in
-            guard response == .OK, let lyricsDir = AppDatabase.shared.lyricsDirectory else { return }
-            
-            for url in panel.urls {
-                let dest = lyricsDir.appendingPathComponent(url.lastPathComponent)
-                try? FileManager.default.removeItem(at: dest)
-                do {
-                    try FileManager.default.copyItem(at: url, to: dest)
-                } catch {
-                    print("Failed to copy lyric file \(url.lastPathComponent): \(error)")
-                }
-            }
-            
-            // Auto-reload lyrics if the current track just got a lyric
-            if let currentUrlStr = engine.currentTrack?.filePath {
-                let currentUrl = URL(fileURLWithPath: currentUrlStr)
-                LyricsState.shared.load(for: currentUrl)
-            }
-        }
-    }
 }

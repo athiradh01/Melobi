@@ -6,6 +6,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        
+        // Listen for Spacebar to toggle Play/Pause globally, but only if not typing
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // keyCode 49 is Space
+            if event.keyCode == 49 {
+                // Check if the current first responder is a text input field
+                if let responder = NSApp.keyWindow?.firstResponder,
+                   responder.isKind(of: NSTextView.self) || responder.isKind(of: NSTextField.self) {
+                    return event // Let the text field handle the space character
+                }
+                
+                Task { @MainActor in
+                    AudioEngine.shared.togglePlayPause()
+                }
+                return nil // Consume the event
+            }
+            return event
+        }
     }
     
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -38,6 +56,7 @@ struct ResonanceApp: App {
             self.db = pool
             LibraryStore.shared.startObserving(db: pool)
             LibraryStore.shared.startPlaylistObserving(db: pool)
+            LibraryStore.shared.backfillLanguagesIfNeeded(db: pool)
         } catch {
             fatalError("Failed to initialize database: \(error)")
         }
@@ -74,7 +93,6 @@ struct ResonanceApp: App {
             CommandGroup(replacing: .newItem) {}
             CommandMenu("Playback") {
                 Button("Play / Pause") { AudioEngine.shared.togglePlayPause() }
-                    .keyboardShortcut(" ", modifiers: [])
                 Button("Next Track") { AudioEngine.shared.next() }
                     .keyboardShortcut(.rightArrow, modifiers: .command)
                 Button("Previous Track") { AudioEngine.shared.previous() }

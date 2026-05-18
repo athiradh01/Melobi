@@ -59,16 +59,16 @@ public final class LibraryStore {
     }
     
     private func rebuildFiltered() {
-        let nonVaultTracks = tracks.filter { track in
+        let pool = tracks.filter { track in
             guard let tid = track.id else { return true }
             return !vaultOnlyTrackIds.contains(tid)
         }
         if searchQuery.isEmpty {
-            filteredTracks = nonVaultTracks
+            filteredTracks = pool
             filteredAudiobooks = audiobooks
         } else {
             let q = searchQuery
-            filteredTracks = nonVaultTracks.filter {
+            filteredTracks = pool.filter {
                 ($0.title?.localizedCaseInsensitiveContains(q) ?? false) ||
                 ($0.artist?.localizedCaseInsensitiveContains(q) ?? false) ||
                 ($0.album?.localizedCaseInsensitiveContains(q) ?? false)
@@ -76,6 +76,29 @@ public final class LibraryStore {
             filteredAudiobooks = audiobooks.filter {
                 ($0.title?.localizedCaseInsensitiveContains(q) ?? false) ||
                 ($0.author?.localizedCaseInsensitiveContains(q) ?? false)
+            }
+        }
+    }
+
+    /// One-shot pass after migration v6: detect language for every track that
+    /// still has a NULL value. Runs on a background queue so launch isn't blocked.
+    public func backfillLanguagesIfNeeded(db: DatabasePool) {
+        Task.detached(priority: .utility) {
+            do {
+                let needsBackfill: [Track] = try await db.read { conn in
+                    try Track.filter(Column("language") == nil).fetchAll(conn)
+                }
+                guard !needsBackfill.isEmpty else { return }
+
+                try await db.write { conn in
+                    for var track in needsBackfill {
+                        let lang = LanguageDetector.detect(title: track.title, artist: track.artist)
+                        track.language = lang
+                        try track.update(conn)
+                    }
+                }
+            } catch {
+                print("[LibraryStore] Language backfill failed: \(error)")
             }
         }
     }
@@ -417,7 +440,8 @@ public final class LibraryStore {
                                 album: meta.album,
                                 artworkPath: artworkPath,
                                 durationMs: meta.durationMs,
-                                format: ext
+                                format: ext,
+                                language: LanguageDetector.detect(title: meta.title, artist: meta.artist)
                             )
                             try track.insert(conn)
                         }

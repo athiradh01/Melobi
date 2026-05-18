@@ -163,7 +163,28 @@ public final class AppDatabase {
                 try db.execute(sql: "UPDATE likedTrack SET sortOrder = ? WHERE id = ?", arguments: [index, id])
             }
         }
-        
+
+        migrator.registerMigration("v6") { db in
+            // Language code (BCP-47/ISO 639-1) detected from title+artist at scan time.
+            // NULL until backfilled — LibraryStore runs a one-shot pass on launch.
+            try db.alter(table: "track") { t in
+                t.add(column: "language", .text)
+            }
+        }
+
+        migrator.registerMigration("v7") { db in
+            // Stores the raw sync timestamps (from manual or auto sync) per track.
+            // This is the permanent baseline — pre-roll adjustments never touch this.
+            try db.create(table: "lyricsSyncData") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("trackFilePath", .text).notNull().unique()
+                t.column("lrcContent", .text).notNull()
+                t.column("preRollMs", .double).notNull().defaults(to: 0)
+                t.column("syncMethod", .text).notNull() // "manual" or "auto"
+                t.column("syncedAt", .datetime).notNull()
+            }
+        }
+
         return migrator
     }
 }

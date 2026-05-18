@@ -27,8 +27,11 @@ public struct Track: Codable, FetchableRecord, MutablePersistableRecord, Identif
     public var durationMs: Int64?
     public var format: String?
     public var dateAdded: Date
-    
-    public init(id: Int64? = nil, filePath: String, title: String? = nil, artist: String? = nil, album: String? = nil, artworkPath: String? = nil, durationMs: Int64? = nil, format: String? = nil, dateAdded: Date = Date()) {
+    /// BCP-47 / ISO 639-1 language code ("en", "ja", "ml", …) detected from the track's
+    /// title/artist text. `nil` means "not yet detected" (eligible for backfill).
+    public var language: String?
+
+    public init(id: Int64? = nil, filePath: String, title: String? = nil, artist: String? = nil, album: String? = nil, artworkPath: String? = nil, durationMs: Int64? = nil, format: String? = nil, dateAdded: Date = Date(), language: String? = nil) {
         self.id = id
         self.filePath = filePath
         self.title = title
@@ -38,8 +41,9 @@ public struct Track: Codable, FetchableRecord, MutablePersistableRecord, Identif
         self.durationMs = durationMs
         self.format = format
         self.dateAdded = dateAdded
+        self.language = language
     }
-    
+
     mutating public func didInsert(_ inserted: InsertionSuccess) {
         id = inserted.rowID
     }
@@ -192,6 +196,38 @@ public struct LikedTrack: Codable, FetchableRecord, MutablePersistableRecord, Id
         self.trackId = trackId
         self.likedAt = likedAt
         self.sortOrder = sortOrder
+    }
+    
+    mutating public func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}
+
+// MARK: - Lyrics Sync Data
+
+/// Stores the raw sync timestamps obtained from manual or auto sync.
+/// This is the permanent baseline — pre-roll adjustments produce "tune data"
+/// which is saved separately in the `.lrc` file for playback.
+public struct LyricsSyncData: Codable, FetchableRecord, MutablePersistableRecord, Identifiable, Equatable {
+    public var id: Int64?
+    /// The file path of the track this sync data belongs to
+    public var trackFilePath: String
+    /// The raw LRC content with original sync timestamps
+    public var lrcContent: String
+    /// The last applied pre-roll offset (in ms) so the slider can be restored
+    public var preRollMs: Double
+    /// "manual" or "auto"
+    public var syncMethod: String
+    /// When the sync was performed
+    public var syncedAt: Date
+    
+    public init(id: Int64? = nil, trackFilePath: String, lrcContent: String, preRollMs: Double = 0, syncMethod: String, syncedAt: Date = Date()) {
+        self.id = id
+        self.trackFilePath = trackFilePath
+        self.lrcContent = lrcContent
+        self.preRollMs = preRollMs
+        self.syncMethod = syncMethod
+        self.syncedAt = syncedAt
     }
     
     mutating public func didInsert(_ inserted: InsertionSuccess) {

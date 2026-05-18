@@ -4,13 +4,15 @@ import GRDB
 enum SettingsSection: String, CaseIterable {
     case appearance = "Appearance"
     case equalizer = "Equalizer"
+    case lyrics = "Lyrics"
     case about = "About"
-    
+
     var iconName: String {
         switch self {
         case .appearance: return "paintpalette"
         case .equalizer: return "slider.horizontal.3"
-        case .about: return "info.circle"
+        case .lyrics:    return "music.note.list"
+        case .about:     return "info.circle"
         }
     }
 }
@@ -21,6 +23,7 @@ struct SettingsView: View {
     let db: DatabasePool
     
     @State private var themeManager = ThemeManager.shared
+    @State private var lyricsSettings = LyricsSettings.shared
     @State private var selectedSection: SettingsSection = .appearance
     
     private var t: Theme { Theme(scheme: colorScheme) }
@@ -97,6 +100,8 @@ struct SettingsView: View {
                             appearanceSection
                         case .equalizer:
                             EqualizerMasterView()
+                        case .lyrics:
+                            lyricsSection
                         case .about:
                             aboutSection
                         }
@@ -294,6 +299,66 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
     
+    private var lyricsSection: some View {
+        VStack(alignment: .leading, spacing: 28) {
+
+            // Pre-roll Offset
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Pre-roll Offset")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(t.onSurface)
+
+                Text("Shifts lyrics earlier so they appear just before the vocals — matching professional karaoke and Spotify UX.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(t.onSurfaceVariant)
+                    .lineSpacing(3)
+
+                HStack(spacing: 16) {
+                    Text("0 ms")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(t.onSurfaceVariant)
+
+                    Slider(
+                        value: Bindable(lyricsSettings).preRollOffsetMs,
+                        in: -600...0,
+                        step: 10
+                    )
+                    .tint(t.primary)
+
+                    Text("-600 ms")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(t.onSurfaceVariant)
+                }
+
+                HStack {
+                    Spacer()
+                    Text("\(Int(lyricsSettings.preRollOffsetMs)) ms")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(t.primary)
+                    Spacer()
+                }
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        lyricsSettings.preRollOffsetMs = -300
+                    }
+                } label: {
+                    Text("Reset to Default (−300 ms)")
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 14)
+                        .background(t.surfaceContainerHigh)
+                        .foregroundStyle(t.onSurface)
+                        .cornerRadius(7)
+                }
+                .buttonStyle(.plain)
+            }
+
+
+
+        }
+    }
+
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 24) {
             // App Identity

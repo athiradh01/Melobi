@@ -413,50 +413,59 @@ struct ContentView: View {
     // MARK: - Main Content (no animation)
     @ViewBuilder
     private var mainContent: some View {
-        if engine.isNowPlayingViewActive {
-            NowPlayingView(db: db)
-        } else {
-            switch section {
-            case .home:
-                HomeView(
-                    onNavigateToLibrary: { section = .music },
-                    onPlayTrack: { track in
-                        playTrack(track, from: sortedTracks)
-                    },
-                    onPlayAudiobook: { book in
-                        deactivateSearch()
-                        let chapters = library.chapters(for: book, db: db)
-                        let resumePos = library.resumePosition(for: book, db: db)
-                        engine.load(audiobook: book, resumePosition: resumePos, chapters: chapters)
-                        engine.play()
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            engine.isNowPlayingViewActive = true
-                        }
-                    },
-                    db: db
-                )
-            case .music:
-                MusicLibraryView(sortOption: $sortOption, sortAscending: $sortAscending, db: db)
-            case .audiobooks:
-                AudiobooksView(db: db)
-            case .likedSongs:
-                LikedSongsView(db: db, onPlayTrack: { track, queue in
-                    playTrack(track, from: queue)
-                })
-            case .playlists:
-                if let playlist = selectedPlaylist {
-                    PlaylistDetailView(playlist: playlist, db: db, onPlayTrack: { track, queue in
-                        playTrack(track, from: queue)
-                    }, onGoBack: {
-                        selectedPlaylist = nil
-                    })
-                } else {
-                    PlaylistsOverviewView(db: db, onSelectPlaylist: { playlist in
-                        selectedPlaylist = playlist
-                    }, onPlayTrack: { track, queue in
+        ZStack {
+            // Keep section content in hierarchy to preserve scroll state
+            Group {
+                switch section {
+                case .home:
+                    HomeView(
+                        onNavigateToLibrary: { section = .music },
+                        onPlayTrack: { track in
+                            playTrack(track, from: sortedTracks)
+                        },
+                        onPlayAudiobook: { book in
+                            deactivateSearch()
+                            let chapters = library.chapters(for: book, db: db)
+                            let resumePos = library.resumePosition(for: book, db: db)
+                            engine.load(audiobook: book, resumePosition: resumePos, chapters: chapters)
+                            engine.play()
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                engine.isNowPlayingViewActive = true
+                            }
+                        },
+                        db: db
+                    )
+                case .music:
+                    MusicLibraryView(sortOption: $sortOption, sortAscending: $sortAscending, db: db)
+                case .audiobooks:
+                    AudiobooksView(db: db)
+                case .likedSongs:
+                    LikedSongsView(db: db, onPlayTrack: { track, queue in
                         playTrack(track, from: queue)
                     })
+                case .playlists:
+                    if let playlist = selectedPlaylist {
+                        PlaylistDetailView(playlist: playlist, db: db, onPlayTrack: { track, queue in
+                            playTrack(track, from: queue)
+                        }, onGoBack: {
+                            selectedPlaylist = nil
+                        })
+                    } else {
+                        PlaylistsOverviewView(db: db, onSelectPlaylist: { playlist in
+                            selectedPlaylist = playlist
+                        }, onPlayTrack: { track, queue in
+                            playTrack(track, from: queue)
+                        })
+                    }
                 }
+            }
+            .opacity(engine.isNowPlayingViewActive ? 0 : 1)
+            .allowsHitTesting(!engine.isNowPlayingViewActive)
+            
+            if engine.isNowPlayingViewActive {
+                NowPlayingView(db: db)
+                    .transition(.opacity)
+                    .zIndex(1)
             }
         }
     }

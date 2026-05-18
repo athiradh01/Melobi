@@ -32,3 +32,6 @@ DerivedData/
 *.xcuserstate
 *.xccheckout
 *.xcscmblueprint
+
+# AI Agent Specifics
+.claude/

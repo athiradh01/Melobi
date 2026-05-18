@@ -1,15 +1,32 @@
 import Foundation
 import GRDB
+import NaturalLanguage
 
 public enum MediaType {
     case music
     case audiobook
 }
 
+/// Detects the dominant language of a track from its title + artist metadata.
+/// Returns a BCP-47 code ("en", "ja", "ml", …) or `nil` when the input has no
+/// detectable language (e.g. empty strings, pure numbers, or instrumentals).
+public enum LanguageDetector {
+    public static func detect(title: String?, artist: String?) -> String? {
+        let parts = [title, artist].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                                   .filter { !$0.isEmpty }
+        let text = parts.joined(separator: " ")
+        guard text.count >= 2 else { return nil }
+
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(text)
+        return recognizer.dominantLanguage?.rawValue
+    }
+}
+
 public actor LibraryScanner {
     public static let shared = LibraryScanner()
     private init() {}
-    
+
     public let supportedMusicFormats = Set(["mp3", "flac", "aac", "m4a"])
     public let supportedAudiobookFormats = Set(["m4b", "mp4b"])
     
@@ -71,7 +88,8 @@ public actor LibraryScanner {
                     album: meta.album,
                     artworkPath: artworkPath,
                     durationMs: meta.durationMs,
-                    format: ext
+                    format: ext,
+                    language: LanguageDetector.detect(title: meta.title, artist: meta.artist)
                 )
                 musicBatch.append(track)
                 if musicBatch.count >= 100 {
